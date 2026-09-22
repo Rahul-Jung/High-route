@@ -234,8 +234,12 @@
 </main>
 
 <script>
-const API = window.HIGHROUTE_API_BASE || 'http://localhost:4000';
-const FRONTEND = window.HIGHROUTE_FRONTEND_BASE || 'http://localhost:8080';
+// Same reasoning as admin.html: this page is served BY the backend, so its
+// own API calls should always target wherever it's actually hosted.
+const API = window.HIGHROUTE_API_BASE || location.origin;
+// The public site, unlike this page, is a genuinely separate deployment
+// (Vercel) — defaults to the real live frontend, overridable for local dev.
+const FRONTEND = window.HIGHROUTE_FRONTEND_BASE || 'https://high-route-mtb.vercel.app';
 
 function esc(v){ return String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
 function money(c){ return (c/100).toLocaleString(undefined, { style:'currency', currency:'EUR' }); }

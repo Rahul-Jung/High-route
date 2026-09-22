@@ -11,3 +11,6 @@ backend/data/server.log
 
 .DS_Store
 Thumbs.db
+
+# Contains real credentials (admin password, API keys) — local reference only
+PROJECT_GUIDE.md

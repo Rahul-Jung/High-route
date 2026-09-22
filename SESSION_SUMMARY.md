@@ -497,6 +497,266 @@ previous round left behind. Read in order; later rounds fix earlier ones.
   superseded, orphaning that payment under the old logic). Offered to help
   clean these up; not yet requested.
 
+## Task 5 — Performance Pass & Real Photography
+
+**Ask (verbatim):** "remove those effects that makes my webpage laggy its too
+laggy and not smooth too / also have a full hd background images / replace
+the image with the suitable images of trails cycling mountans and others"
+
+### Performance
+Removed every continuous/fixed-position effect judged to be the actual jank
+source, keeping only cheap one-time ones:
+- **Removed:** `backdrop-filter` blur on the always-visible header, the auth
+  modal, the lightbox overlay, and tour-card tag chips (blur on a fixed/
+  frequently-repainted element is expensive); the fixed full-viewport grain
+  texture (`feTurbulence` SVG filter + `mix-blend-mode`, recomposited every
+  scroll frame); the mousemove-tracked hero pointer glow (recalculated a
+  gradient on every pointer move); the infinite `box-shadow` "pip-pulse"
+  animation on availability dots (`box-shadow` isn't GPU-accelerated); the
+  scroll-reveal system (many simultaneous `IntersectionObserver`-triggered
+  transitions on grid-heavy pages).
+- **Kept:** the one-time page-load fade and the custom scrollbar — both cheap,
+  neither runs continuously.
+- Files: `frontend/main.js`, `frontend/style.css`.
+
+### Images
+Root cause: every tour/guide/gallery/destination image was a random
+`picsum.photos/seed/<name>/...` placeholder with **zero thematic control**
+— explains mismatches like a water-droplet macro for "Pokhara Lakeside Flow"
+or star trails for "Kathmandu Valley Explorer". Sourced ~20 real, verified
+(HTTP-200-checked via `curl`, visually confirmed via PIL contact sheets),
+correctly-themed Unsplash photos and wired them in at three levels so both
+fresh and already-seeded databases end up correct:
+1. **`backend/seed.js`** — every `image_url`/`hero_image_url`/`photo_url`
+   replaced (6 tour covers, 2 guide portraits, 6 destination heroes, 7
+   gallery photos).
+2. **Static HTML fallbacks** — `frontend/index.html`, `tours.html`,
+   `tour-detail.html`, `trip.html` (shown before the API responds, or if it
+   never does).
+3. **`backend/db.js`** migration (the piece that actually fixes the **live**
+   database, since `seed()` only ever runs once) — idempotent
+   `UPDATE ... WHERE <key> = ? AND <col> = ?` swaps that only touch rows
+   still holding the *exact* original placeholder, so any image an admin has
+   since replaced through the admin panel is never overwritten. Verified
+   safe/idempotent against a disposable copy of the real `highroute.db`
+   (booted twice, confirmed no duplicate/corrupted updates) before being
+   applied live.
+- The homepage's own `frontend/assets/img/hero-trail.jpg` was left as-is —
+  already a real, correctly-themed trail photo, not a placeholder.
+
+---
+
+## Task 6 — Mandatory Sign-In for Custom-Ride Requests
+
+**Ask:** "why i am able to book custom ride even without signing up or
+signing in / look after that" — investigated, found `POST
+/api/custom-requests` was *intentionally* public (a lead-capture "get a
+quote" form; nothing money-related ever was — approving/paying a proposal
+already required sign-in). Given the choice, you asked to lock the request
+form itself behind sign-in too.
+
+- **`backend/routes/customRequests.js`** — `POST /api/custom-requests` now
+  wrapped in `requireAuth('rider', …)`; `rider_id` comes from the session,
+  never an optional client value.
+- **`frontend/main.js`** — the Build Your Adventure wizard's submit button no
+  longer calls the API directly; it's gated behind `Auth.requireSignIn(
+  doSubmit)`, matching the pattern already used elsewhere (e.g. "book this
+  tour"). Opens the sign-in modal on click if needed and **resumes
+  automatically** with the already-filled-out wizard state the moment
+  sign-in succeeds — nothing the visitor typed is lost.
+- Verified via `curl` against a disposable backend copy: anonymous POST →
+  `401`; POST with a real rider bearer token → `201`.
+
+---
+
+## Task 7 — Per-Tour Photo Galleries
+
+**Ask:** "have a visually appealing gallery section in each tour detail page
+as well as custom tour detail page etc / and make a section for admin to add
+images for tour detail pages."
+
+Investigation found the infrastructure for this **already existed** end to
+end — `gallery_images` table with a `category='tour'` + `tour_id` shape, a
+full `GET/POST/PATCH/DELETE /api/admin/gallery` API, a `renderTourGallery()`
+call already wired into both `tour-detail.html` and the custom-trip mode of
+`trip.html` (they share the same render path via `renderSharedTourSections`),
+and a full add/edit/delete UI in the admin Gallery tab. The actual bug: **zero
+rows** in the database had ever been seeded with `category='tour'`, so every
+tour's gallery section silently rendered "No photos have been added for this
+tour yet." forever.
+
+- Sourced 16 new verified, thematically-matched photos per tour region
+  (desert/canyon for Mustang, alpine/snow-peak for Annapurna, terraced
+  hillside/village for Kathmandu, pine forest for Langtang, remote high-alpine
+  for Manaslu, lake/gentle-hills for Pokhara) — screened out two candidates
+  that didn't actually fit (a cactus-desert shot, geographically wrong for
+  Nepal; an unmistakably-iconic Moraine Lake/Banff shot, too specific a
+  foreign landmark for a demo site).
+- **`backend/seed.js`** — added ~29 `gal(..., 'tour', <tourId>, …)` calls (5
+  photos per tour, 4 for Pokhara) for fresh databases.
+- **`backend/db.js`** — matching idempotent migration for the already-seeded
+  live database: per tour slug, only inserts its 4–5 photos if that tour
+  **currently has zero** `category='tour'` rows — so an admin who's since
+  added their own tour photos via the admin panel is never touched. Verified
+  against a disposable copy of the real DB (29 rows inserted, matching
+  exactly; re-booted a second time to confirm idempotency — still 29, no
+  duplicates).
+- **`backend/public/admin.html`** — added a **"Photos" quick-link** button on
+  every row of the Tours tab table. Jumps straight to the Gallery tab,
+  pre-filters its table to that tour's photos, and pre-fills the "Add an
+  image" form's category (`tour`) and linked-tour dropdown — so managing one
+  tour's photos no longer means hunting through the full unsorted photo list.
+- **End-to-end verified** via a headless-Edge screenshot of the live-rendered
+  `tour-detail.html?slug=upper-mustang` page: the Gallery section shows 5
+  correctly-themed desert/canyon photos in the existing masonry grid layout.
+
+---
+
+## Task 8 — Production Deployment (GitHub, Vercel, Railway)
+
+**Ask:** push the project to a GitHub repo named "High-route", and get a
+Vercel link for the frontend only, to show the design to your senior. Later
+extended (Task 9) to include a real, working login credential and a live
+backend once a demo credential needed to actually function on the public link.
+
+### Tooling set up locally
+Installed GitHub CLI (`winget`), Vercel CLI and Railway CLI (`npm i -g`).
+Authenticated each via their own browser-based device/OAuth flow (you
+completed the browser step each time; GitHub CLI ended up signed in as
+`Rahul-Jung`, Railway/Vercel as `kunwarrahul9861@gmail.com`). Had to fix a
+stale Windows Credential Manager entry for a *different* GitHub account that
+was shadowing `gh`'s own git credential helper for `github.com` — `gh auth
+setup-git` resolved it.
+
+### GitHub
+- `Rahul-Jung/High-route` (was already created, empty). Added a
+  root-level `.gitignore` (excludes `backend/data/*.db*`, `backend/data/
+  backups/`, `backend/data/server.log`, `.env`, `node_modules/` — the real
+  database and its backups are never committed). Initial commit + push;
+  later commits pushed as this task's features landed.
+
+### Vercel (frontend, static)
+- **https://high-route-mtb.vercel.app** — deployed via `vercel --prod` from
+  `frontend/`. **Not** connected to GitHub for auto-deploy; a frontend
+  change needs a manual `vercel --prod` redeploy.
+- `frontend/config.js` (new, committed) sets `window.HIGHROUTE_API_BASE` to
+  the live Railway backend URL — every HTML page now loads it just before
+  `main.js`. Local development is unaffected: without this file (or if it's
+  removed), `main.js` falls back to `http://localhost:4000`.
+
+### Railway (backend)
+- **https://high-route-backend-production.up.railway.app** — a persistent
+  Node service (Vercel's serverless functions don't fit a stateful SQLite
+  file well, hence a separate host for the backend).
+- A volume (`high-route-backend-volume`) mounted at `/app/data` so the
+  SQLite database survives redeploys/restarts.
+- **Connected to GitHub** (`railway service source connect --repo
+  Rahul-Jung/High-route --branch main`) — every push to `main` now
+  auto-deploys the backend within about a minute. The service's **root
+  directory** had to be set to `/backend` explicitly (the repo also has a
+  `frontend/` folder at the root, and Railway's CLI doesn't expose a root-
+  directory flag) — done via a direct `railway api` GraphQL
+  `serviceInstanceUpdate` mutation, since the dashboard-only setting isn't
+  reachable any other way from the CLI. The first GitHub-triggered deploy
+  failed before this was set (built from the repo root, no `package.json`
+  there); Railway kept the previous good deployment online throughout, so
+  there was no live downtime.
+- `backend/.nvmrc` (new, `22`) — pins the Node version Railway's Railpack
+  builder picks, since `node:sqlite` needs ≥22.5 and Railpack would
+  otherwise default to an older LTS.
+- **Env vars** (`ADMIN_EMAIL`, `ADMIN_PASSWORD`, `RESEND_API_KEY` — see Task
+  9) were set by you directly in the Railway dashboard, not by me: setting
+  or reading them via the CLI is blocked for me as a secret-store action.
+
+---
+
+## Task 9 — Mandatory Signup Email Verification
+
+**Ask:** "i want you to make a login credincial and signup verification is a
+must." Clarified: verification emails should be sent for real (via a
+provider, not faked), and the "login credential" meant a real account you
+could hand to your senior on the live link — which is what made deploying a
+reachable backend (Task 8) necessary in the first place.
+
+### Database (`backend/schema.sql`, `backend/db.js`)
+- **`riders`** — new nullable `email_verified_at` column; login is refused
+  while it's `NULL`.
+- **`email_verifications`** (new table) — one outstanding code per rider
+  (`code_hash` — SHA-256 of the code, same pattern as `sessions.token_hash`;
+  raw codes are never stored), `attempts`, `expires_at`. A new code always
+  invalidates any prior unused one for that rider.
+- **Migration** — `email_verified_at` backfilled to each existing rider's own
+  `created_at` for any database that predates this feature, so accounts that
+  signed up under the old no-verification flow are never locked out by a
+  rule that didn't exist when they registered. Verified against a disposable
+  copy of the real production DB: both real pre-existing riders (`Usha`,
+  `Rahul Kunwar`) came out auto-verified; re-booted a second time to confirm
+  idempotency.
+
+### Backend
+- **`backend/lib/email.js`** (new) — sends via Resend's HTTP API using
+  Node's built-in `fetch` (no npm dependency, matching this backend's
+  zero-dependency rule). Falls back to **logging the code to the console**
+  instead of failing signup when `RESEND_API_KEY` isn't set (dev/local
+  default) or if the Resend call itself errors — same "demo credential
+  printed to console" pattern already used for the admin bootstrap password.
+- **`backend/routes/auth.js`**:
+  - `POST /api/auth/register` no longer returns a session — creates the
+    rider, issues a 6-digit code (15-minute expiry), emails it, and returns
+    `{ pending_verification: true, … }`.
+  - `POST /api/auth/verify-email` (new) — rate-limited, code-hash compared,
+    capped at 5 wrong attempts before requiring a fresh code; on success,
+    marks the rider verified and returns a real session (auto-signs-in).
+  - `POST /api/auth/resend-verification` (new) — rate-limited (3 per 15
+    min), invalidates the previous code.
+  - `POST /api/auth/login` now checks `email_verified_at` — an unverified
+    account gets `403 { needs_verification: true, email }` instead of a
+    session, even with the correct password.
+
+### Frontend
+- **`frontend/main.js`** — `apiGet`/`apiPost`/`apiPatch` now attach the full
+  error response body as `err.data` (previously only `err.message`), so
+  callers can branch on fields like `needs_verification`. The sign-in/sign-up
+  modal (`Auth`) gained a third step — a "Check your email" code-entry form
+  with a Resend-code button — that appears automatically either right after
+  signup, or when a correct-password sign-in attempt reports the account
+  still needs verifying. `Auth.requireSignIn`'s existing "resume the pending
+  action after sign-in" behaviour (e.g. the Build Your Adventure wizard from
+  Task 6) works unchanged through this new step.
+- **Verified fully end-to-end**, both via `curl` (register → wrong code
+  rejected → correct code accepts → login now works; resend invalidates the
+  old code) and via a real headless-Edge browser run that drove the actual
+  modal DOM (signup → "Check your email" step renders with the right email
+  → submitting a correct-password login on that still-unverified account
+  auto-redirects into the same step → entering the code signs in, header
+  updates to show the account name).
+
+### Known loose end
+A throwaway `deploytest@example.com` account was registered directly against
+the **live** Railway backend to confirm the deploy picked up this feature —
+it's harmless (unverified, can never receive a real code since Resend's
+sandbox mode can only email the account owner's own address) but is sitting
+in the live database. Not cleaned up; flagged here in case you want it gone.
+
+You still need to sign up for real (`kunwarrahul9861@gmail.com`, on
+https://high-route-mtb.vercel.app) to get yourself a working handoff
+credential — Resend's sandbox restriction means I can't create one for you
+server-side and hand you a working password without you receiving the code.
+
+---
+
+## Quick reference: live deployment
+
+| What | URL / detail |
+|---|---|
+| Live site (frontend) | https://high-route-mtb.vercel.app |
+| Backend API | https://high-route-backend-production.up.railway.app |
+| Admin dashboard | `<backend URL>/admin.html` — **not** on the Vercel domain, it lives on the backend |
+| GitHub repo | https://github.com/Rahul-Jung/High-route |
+| Backend deploys | automatic on every push to `main` (Railway ← GitHub) |
+| Frontend deploys | manual — `vercel --prod` from `frontend/` |
+| Admin login | `ADMIN_EMAIL` / `ADMIN_PASSWORD` as set in Railway's Variables tab |
+
 ---
 *Generated at the end of this session — see `HANDOFF.md` for the fuller
 project history/conventions from earlier sessions.*
