@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.*
+
+# Runtime database + logs — never commit real/demo data or secrets
+backend/data/*.db
+backend/data/*.db-wal
+backend/data/*.db-shm
+backend/data/backups/
+backend/data/server.log
+
+.DS_Store
+Thumbs.db

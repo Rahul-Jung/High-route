@@ -1,0 +1,1885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Operations Dashboard — High Route</title>
+<style>
+  :root{
+    --ink:#15140F; --ink-soft:#1B1A13; --stone:#211F19; --stone2:#38352A; --paper:#F2EEE2; --dim:#C9C4B2;
+    --signal:#FF4E1F; --signal-2:#FF7A45; --glacier:#6FA0B8; --green:#7FBF6B; --amber:#E8B33D; --red:#D9534F;
+    --line:rgba(242,238,226,0.14); --line-soft:rgba(242,238,226,0.07);
+    --sidebar-bg:#17160F; --card-grad:linear-gradient(160deg, var(--stone), var(--ink-soft));
+    --radius:10px; --radius-sm:6px; --radius-lg:16px; --radius-xl:20px;
+    --shadow-card:0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.55);
+    --shadow-pop:0 20px 60px -18px rgba(0,0,0,0.7);
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; color:var(--paper); font-family:Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(1100px 620px at 14% -8%, rgba(255,78,31,0.10), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgba(111,160,184,0.08), transparent 55%),
+      var(--ink);
+    background-attachment:fixed;
+  }
+  input, select, button, textarea{ font-family:inherit; }
+  input, select, textarea{
+    background:var(--ink-soft); border:1px solid var(--line); color:var(--paper); padding:10px 12px; font-size:13px;
+    width:100%; border-radius:var(--radius-sm); transition:border-color .15s, box-shadow .15s;
+  }
+  input:focus, select:focus, textarea:focus{ outline:none; border-color:var(--signal); box-shadow:0 0 0 3px rgba(255,78,31,0.15); }
+  input:hover, select:hover{ border-color:rgba(242,238,226,0.28); }
+  textarea{ resize:vertical; }
+  button{
+    background:linear-gradient(180deg, var(--signal-2), var(--signal)); border:0; color:var(--ink); font-weight:700;
+    padding:10px 18px; cursor:pointer; font-size:13px; letter-spacing:0.01em; border-radius:999px;
+    transition:filter .15s, transform .1s, box-shadow .15s; box-shadow:0 4px 14px -4px rgba(255,78,31,0.45);
+  }
+  button:hover{ filter:brightness(1.06); transform:translateY(-1px); box-shadow:0 8px 20px -6px rgba(255,78,31,0.55); }
+  button:active{ transform:translateY(0); }
+  button:disabled{ opacity:0.5; cursor:not-allowed; transform:none; box-shadow:none; }
+  button.ghost{ background:transparent; border:1px solid var(--line); color:var(--dim); box-shadow:none; }
+  button.ghost:hover{ color:var(--paper); border-color:var(--dim); filter:none; box-shadow:none; background:rgba(242,238,226,0.04); }
+  button.danger{ background:linear-gradient(180deg, #E06861, var(--red)); color:#fff; box-shadow:0 4px 14px -4px rgba(217,83,79,0.5); }
+  button.small{ padding:6px 12px; font-size:11px; border-radius:999px; }
+  code{ background:var(--stone2); padding:1px 5px; border-radius:3px; }
+  a{ color:var(--glacier); }
+  ::-webkit-scrollbar{ width:10px; height:10px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{ background:var(--stone2); border-radius:6px; border:2px solid var(--ink); }
+
+  /* --- login gate --- */
+  #login-gate{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; position:relative; overflow:hidden; }
+  #login-gate::before{
+    content:''; position:absolute; inset:0; opacity:0.4; pointer-events:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600' viewBox='0 0 600 600'%3E%3Cg fill='none' stroke='%23F2EEE2' stroke-opacity='0.06'%3E%3Cpath d='M40 500 C 150 420, 180 380, 130 300 C 90 240, 160 190, 260 210 C 360 230, 380 160, 320 100 C 280 60, 320 20, 400 30'/%3E%3Cpath d='M0 540 C 140 460, 200 430, 160 340 C 120 260, 200 220, 300 250 C 400 280, 430 190, 360 130 C 310 90, 350 40, 440 40'/%3E%3Cpath d='M-30 580 C 130 500, 220 480, 190 380 C 150 280, 240 250, 340 290 C 440 330, 480 220, 400 160 C 340 120, 380 60, 480 50'/%3E%3C/g%3E%3C/svg%3E");
+    background-size:600px 600px;
+  }
+  .login-card{
+    max-width:380px; width:100%; text-align:left; background:linear-gradient(180deg, var(--stone), var(--ink-soft));
+    border:1px solid var(--line); padding:38px 32px; border-radius:var(--radius); box-shadow:var(--shadow-pop);
+    position:relative; z-index:1;
+  }
+  .login-card h1{ font-size:17px; margin:0 0 6px; text-align:center; letter-spacing:0.02em; }
+  .login-card > p{ color:var(--dim); font-size:12.5px; margin:0 0 26px; line-height:1.6; text-align:center; }
+  .login-card label{ display:block; font-size:11px; color:var(--dim); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.03em; }
+  .login-card .field{ margin-bottom:14px; }
+  .login-card button{ width:100%; margin-top:8px; padding:13px; }
+  #login-error{ min-height:18px; color:var(--red); font-size:12.5px; margin-top:12px; text-align:center; }
+
+  /* --- shell --- */
+  .hidden{ display:none !important; }
+  #shell{ display:grid; grid-template-columns:250px 1fr; min-height:100vh; }
+
+  /* sidebar: dark "card" column with rounded nav pills, matching the
+     reference dashboard's icon-box nav list but in this app's dark palette */
+  nav.sidebar{
+    border-right:1px solid var(--line); padding:20px 14px; display:flex; flex-direction:column; position:sticky; top:0; height:100vh;
+    background:var(--sidebar-bg); overflow-y:auto;
+  }
+  nav.sidebar h1{
+    font-size:14px; padding:6px 10px 20px; margin:0 0 8px; letter-spacing:0.01em;
+    display:flex; align-items:center; gap:9px; border-bottom:1px solid var(--line);
+  }
+  nav.sidebar h1 b{ color:var(--signal); }
+  .tab-btn{
+    display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:none; border:0; color:var(--dim);
+    padding:9px 10px; margin:2px 0; font-size:13px; font-weight:600; border-radius:11px;
+    transition:color .15s, background .15s;
+  }
+  .tab-btn .ic{
+    width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
+    text-align:center; opacity:0.75; font-size:13px; border-radius:9px; background:rgba(242,238,226,0.05); transition:background .15s, opacity .15s, color .15s;
+  }
+  .tab-btn.active{ color:var(--paper); background:linear-gradient(90deg, rgba(255,78,31,0.18), rgba(255,78,31,0.04)); }
+  .tab-btn.active .ic{ opacity:1; background:var(--signal); color:var(--ink); }
+  .tab-btn:hover:not(.active){ color:var(--paper); background:rgba(242,238,226,0.045); }
+  .tab-btn:hover:not(.active) .ic{ background:rgba(242,238,226,0.1); }
+  .sidebar-foot{ margin-top:auto; padding:14px 6px 0; }
+
+  /* topbar: search + notifications + account menu, sitting above <main> */
+  .content-col{ display:flex; flex-direction:column; min-height:100vh; min-width:0; }
+  .topbar{
+    display:flex; align-items:center; gap:18px; padding:16px 40px; border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:60; background:rgba(21,20,15,0.86); backdrop-filter:blur(10px);
+  }
+  .topbar-search{
+    flex:1; max-width:360px; display:flex; align-items:center; gap:9px; background:var(--ink-soft);
+    border:1px solid var(--line); border-radius:999px; padding:9px 16px; transition:border-color .15s;
+  }
+  .topbar-search:focus-within{ border-color:var(--signal); }
+  .topbar-search .ic{ opacity:0.55; font-size:13px; }
+  .topbar-search input{ border:0; background:none; padding:0; width:100%; font-size:13px; }
+  .topbar-search input:focus{ box-shadow:none; outline:none; }
+  .topbar-right{ margin-left:auto; display:flex; align-items:center; gap:10px; position:relative; }
+  .icon-btn{
+    width:38px; height:38px; border-radius:50%; border:1px solid var(--line); background:var(--ink-soft); display:flex;
+    align-items:center; justify-content:center; cursor:pointer; position:relative; font-size:15px; color:var(--dim);
+    transition:border-color .15s, color .15s; flex-shrink:0;
+  }
+  .icon-btn:hover{ color:var(--paper); border-color:var(--dim); }
+  .notif-dot{
+    position:absolute; top:-3px; right:-3px; background:var(--signal); color:var(--ink); border-radius:10px;
+    padding:1px 5px; font-size:9.5px; font-weight:800; min-width:15px; text-align:center; line-height:1.4; box-shadow:0 0 0 2px var(--ink);
+  }
+  .avatar-badge{
+    width:38px; height:38px; border-radius:50%; background:linear-gradient(160deg, var(--signal-2), var(--signal)); color:var(--ink);
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; cursor:pointer; flex-shrink:0;
+  }
+  .dropdown-panel{
+    position:absolute; top:calc(100% + 10px); right:0; min-width:240px; max-width:320px; background:var(--card-grad);
+    border:1px solid var(--line); border-radius:var(--radius-lg); box-shadow:var(--shadow-pop); padding:12px; z-index:400;
+  }
+  .dropdown-panel.wide{ min-width:320px; max-height:380px; overflow-y:auto; }
+  .admin-id{ font-size:11px; color:var(--dim); margin-bottom:10px; line-height:1.5; word-break:break-all; padding:0 2px; }
+  .admin-id b{ color:var(--paper); display:block; font-size:13px; }
+
+  main{ padding:30px 40px 90px; max-width:1200px; }
+  .page-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:26px; }
+  main h2{ font-size:22px; margin:0 0 4px; text-transform:uppercase; letter-spacing:0.02em; }
+  main .subhead{ color:var(--dim); font-size:13px; margin:0; }
+  main .page-head .subhead{ margin:0 0 26px; }
+
+  /* KPI cards: icon badge top-right, big number, label — echoes the
+     reference's Page Views/Visitors/Click/Orders row */
+  .kpis{ display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin-bottom:24px; }
+  .kpi{
+    background:var(--card-grad); padding:18px; border:1px solid var(--line);
+    border-radius:var(--radius-lg); box-shadow:var(--shadow-card); position:relative; overflow:hidden;
+    transition:transform .15s ease, border-color .15s ease;
+  }
+  .kpi:hover{ transform:translateY(-2px); border-color:rgba(242,238,226,0.22); }
+  .kpi-top{ display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; gap:8px; }
+  .kpi span{ display:block; font-size:11px; color:var(--dim); text-transform:uppercase; letter-spacing:0.03em; }
+  .kpi b{ font-size:25px; font-weight:800; letter-spacing:-0.01em; }
+  .kpi-icon{
+    width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    font-size:14px; flex-shrink:0; background:rgba(242,238,226,0.06);
+  }
+
+  /* dashboard-only layout: panel cards, revenue split bar, catalog stat
+     strip, mini notification list, quick-action shortcuts */
+  .dash-grid{ display:grid; grid-template-columns:1.7fr 1fr; gap:18px; align-items:start; }
+  .panel-card{
+    background:var(--card-grad); border:1px solid var(--line); border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-card); padding:22px; margin-bottom:18px;
+  }
+  .panel-card-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:16px; }
+  .panel-card-head h3{ font-size:12.5px; text-transform:uppercase; letter-spacing:0.04em; color:var(--paper); margin:0; }
+  .panel-card-head .dots{ color:var(--dim); letter-spacing:2px; font-size:13px; }
+  .revenue-hero{ font-size:32px; font-weight:800; margin:2px 0 18px; letter-spacing:-0.01em; }
+  .split-track{ height:10px; border-radius:6px; overflow:hidden; display:flex; background:rgba(242,238,226,0.08); margin-bottom:12px; }
+  .split-seg{ height:100%; }
+  .split-legend{ display:flex; gap:20px; font-size:12px; color:var(--dim); flex-wrap:wrap; }
+  .split-legend b{ color:var(--paper); font-weight:700; }
+  .legend-dot{ width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; }
+  .stat-strip{ display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:20px; padding-top:20px; border-top:1px solid var(--line-soft); }
+  .stat-item span{ display:block; font-size:10.5px; color:var(--dim); text-transform:uppercase; letter-spacing:0.03em; margin-bottom:8px; }
+  .stat-item b{ font-size:19px; font-weight:800; }
+  .stat-bar-track{ height:5px; background:rgba(242,238,226,0.08); border-radius:4px; margin-top:10px; overflow:hidden; }
+  .stat-bar-fill{ height:100%; border-radius:4px; }
+  .row-avatar{
+    width:32px; height:32px; border-radius:9px; background:linear-gradient(160deg, var(--signal-2), var(--glacier)); color:var(--ink);
+    display:inline-flex; align-items:center; justify-content:center; font-weight:800; font-size:12.5px; margin-right:10px; vertical-align:middle; flex-shrink:0;
+  }
+  .notif-mini{ padding:10px 2px; border-bottom:1px solid var(--line-soft); font-size:12.5px; }
+  .notif-mini:last-child{ border-bottom:0; }
+  .notif-mini .t{ font-weight:700; }
+  .notif-mini .m{ color:var(--dim); font-size:11.5px; margin-top:2px; }
+  .quick-actions{ display:flex; flex-direction:column; gap:9px; }
+  .quick-actions button{ justify-content:flex-start; text-align:left; display:flex; align-items:center; gap:10px; }
+  @media (max-width:1180px){ .dash-grid{ grid-template-columns:1fr; } }
+
+  table{ width:100%; border-collapse:collapse; font-size:13px; margin-bottom:30px; border:1px solid var(--line); border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow-card); }
+  th{
+    text-align:left; color:var(--dim); font-weight:600; padding:11px 12px; border-bottom:1px solid var(--line); font-size:10.5px;
+    text-transform:uppercase; letter-spacing:0.03em; background:rgba(242,238,226,0.03);
+  }
+  td{ padding:11px 12px; border-bottom:1px solid var(--line-soft); vertical-align:middle; background:rgba(33,31,25,0.4); }
+  tbody tr:last-child td{ border-bottom:0; }
+  tbody tr{ transition:background .12s ease; }
+  tbody tr:hover td{ background:var(--line-soft); }
+  img.thumb{ width:52px; height:40px; object-fit:cover; display:block; background:var(--stone2); border-radius:8px; }
+  .pip{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:7px; box-shadow:0 0 0 3px rgba(242,238,226,0.06); }
+  .empty-note{ color:var(--dim); font-size:13px; padding:18px 4px; background:rgba(33,31,25,0.4); }
+  .row-actions{ display:flex; gap:6px; }
+
+  .form-card{
+    background:var(--card-grad); border:1px solid var(--line); padding:24px;
+    margin-bottom:34px; border-radius:var(--radius-lg); box-shadow:var(--shadow-card);
+  }
+  .form-card h3{ font-size:12px; text-transform:uppercase; color:var(--dim); margin:0 0 18px; letter-spacing:0.05em; display:flex; align-items:center; gap:8px; }
+  .form-card h3::before{ content:''; width:3px; height:12px; background:var(--signal); border-radius:2px; display:inline-block; }
+  .form-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:16px; }
+  .form-grid label{ display:block; font-size:11px; color:var(--dim); margin-bottom:6px; }
+  .form-grid .full{ grid-column:1/-1; }
+  .form-actions{ display:flex; gap:10px; align-items:center; }
+  .toast{ font-size:12px; margin-top:10px; min-height:16px; font-weight:600; }
+  .toast.err{ color:#E39B95; } .toast.ok{ color:#8FCB7C; }
+
+  /* --- top-right toast notifications (success/error/warning/info) --- */
+  #toast-stack{ position:fixed; top:18px; right:18px; z-index:900; display:flex; flex-direction:column; gap:12px; max-width:370px; pointer-events:none; }
+  .toast-card{
+    display:flex; align-items:flex-start; gap:12px; padding:15px 18px 14px; border-radius:12px; font-size:13px; line-height:1.55;
+    background:linear-gradient(160deg, var(--stone), var(--ink-soft)); border:1px solid var(--line); box-shadow:var(--shadow-pop);
+    border-left:4px solid var(--dim); color:var(--paper); cursor:pointer; pointer-events:auto; position:relative; overflow:hidden;
+    animation:toast-in .42s cubic-bezier(.34,1.56,.64,1);
+  }
+  .toast-card.leaving{ animation:toast-out .28s cubic-bezier(.4,0,1,1) forwards; }
+  .toast-card .toast-ic{
+    flex-shrink:0; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:12.5px; font-weight:800; color:var(--ink); box-shadow:0 2px 8px -2px rgba(0,0,0,0.5);
+  }
+  .toast-card .toast-msg{ padding-top:3px; }
+  .toast-card .toast-progress{
+    position:absolute; left:0; bottom:0; height:3px; width:100%; background:currentColor; opacity:0.55;
+    transform-origin:left; animation-name:toast-progress; animation-timing-function:linear; animation-fill-mode:forwards;
+  }
+  .toast-card.success{ border-left-color:var(--green); color:var(--paper); } .toast-card.success .toast-ic{ background:var(--green); }
+  .toast-card.success .toast-progress{ color:var(--green); }
+  .toast-card.error{ border-left-color:var(--red); } .toast-card.error .toast-ic{ background:var(--red); color:#fff; }
+  .toast-card.error .toast-progress{ color:var(--red); }
+  .toast-card.warning{ border-left-color:var(--amber); } .toast-card.warning .toast-ic{ background:var(--amber); }
+  .toast-card.warning .toast-progress{ color:var(--amber); }
+  .toast-card.info{ border-left-color:var(--glacier); } .toast-card.info .toast-ic{ background:var(--glacier); }
+  .toast-card.info .toast-progress{ color:var(--glacier); }
+  @keyframes toast-in{
+    from{ opacity:0; transform:translateX(30px) scale(.9); }
+    to{ opacity:1; transform:none; }
+  }
+  @keyframes toast-out{
+    from{ opacity:1; transform:none; max-height:140px; margin-bottom:12px; }
+    to{ opacity:0; transform:translateX(30px) scale(.94); max-height:0; margin-bottom:0; padding-top:0; padding-bottom:0; }
+  }
+  @keyframes toast-progress{ from{ transform:scaleX(1); } to{ transform:scaleX(0); } }
+
+  /* --- read-only departure status pip + inline row-edit fields --- */
+  .status-pip{ display:inline-flex; align-items:center; gap:7px; font-size:12.5px; }
+  .dep-edit-actions{ display:flex; gap:6px; }
+
+  .section-loading{ color:var(--dim); font-size:13px; padding:20px 4px; }
+
+  @media (max-width:900px){
+    #shell{ grid-template-columns:1fr; }
+    nav.sidebar{ position:static; height:auto; padding:14px 10px; flex-direction:row; align-items:center; overflow-x:auto; }
+    nav.sidebar h1{ border-bottom:0; padding:0 10px; margin:0; white-space:nowrap; }
+    .tab-btn{ white-space:nowrap; padding:9px 12px; }
+    .sidebar-foot{ display:none; }
+    .topbar{ padding:14px 18px; gap:10px; }
+    .topbar-search{ max-width:none; }
+    main{ padding:22px 18px 70px; }
+    .kpis{ grid-template-columns:repeat(2,1fr); }
+    .form-grid{ grid-template-columns:1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="toast-stack" aria-live="polite"></div>
+
+<div id="login-gate">
+  <div class="login-card">
+    <h1>◆ HIGH ROUTE <b style="color:var(--signal)">OPS</b></h1>
+    <p>Sign in with your admin account to manage tours, departures, guides and bookings.</p>
+    <form id="login-form">
+      <div class="field"><label>Email</label><input id="login-email" type="email" autocomplete="username" required></div>
+      <div class="field"><label>Password</label><input id="login-password" type="password" autocomplete="current-password" required></div>
+      <button type="submit">Sign in</button>
+    </form>
+    <div id="login-error"></div>
+  </div>
+</div>
+
+<div id="shell" class="hidden">
+  <nav class="sidebar">
+    <h1>◆ HIGH ROUTE <b>OPS</b></h1>
+    <button class="tab-btn active" data-tab="overview" onclick="showTab('overview')"><span class="ic">◆</span>Overview</button>
+    <button class="tab-btn" data-tab="tours" onclick="showTab('tours')"><span class="ic">▲</span>Tours</button>
+    <button class="tab-btn" data-tab="departures" onclick="showTab('departures')"><span class="ic">◷</span>Departures / dates</button>
+    <button class="tab-btn" data-tab="guides" onclick="showTab('guides')"><span class="ic">◈</span>Guides</button>
+    <button class="tab-btn" data-tab="gallery" onclick="showTab('gallery')"><span class="ic">▣</span>Gallery</button>
+    <button class="tab-btn" data-tab="destinations" onclick="showTab('destinations')"><span class="ic">◎</span>Destinations</button>
+    <button class="tab-btn" data-tab="crm" onclick="showTab('crm')"><span class="ic">✉</span>Custom requests</button>
+    <button class="tab-btn" data-tab="bookings" onclick="showTab('bookings')"><span class="ic">▤</span>Bookings</button>
+    <button class="tab-btn" data-tab="addons" onclick="showTab('addons')"><span class="ic">+</span>Add-ons</button>
+    <button class="tab-btn" data-tab="promos" onclick="showTab('promos')"><span class="ic">%</span>Promo codes</button>
+    <button class="tab-btn" data-tab="refunds" onclick="showTab('refunds')"><span class="ic">↩</span>Refunds</button>
+    <button class="tab-btn" data-tab="reviews" onclick="showTab('reviews')"><span class="ic">★</span>Reviews</button>
+    <button class="tab-btn" data-tab="users" onclick="showTab('users')"><span class="ic">☺</span>Users</button>
+    <button class="tab-btn" data-tab="alerts" onclick="showTab('alerts')"><span class="ic">⚠</span>Emergency alerts</button>
+  </nav>
+
+  <div class="content-col">
+    <header class="topbar">
+      <div class="topbar-search">
+        <span class="ic">🔍</span>
+        <input id="topbar-search" placeholder="Search a section…" autocomplete="off">
+      </div>
+      <div class="topbar-right">
+        <div style="position:relative;">
+          <button class="icon-btn" id="notif-btn" onclick="toggleNotifications()" aria-label="Notifications">🔔<span id="notif-badge" class="hidden notif-dot">0</span></button>
+          <div id="notif-panel" class="hidden dropdown-panel wide">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <b style="font-size:12px;">Notifications</b>
+              <button class="ghost small" style="padding:3px 9px;" onclick="markAllNotificationsRead()">Mark all read</button>
+            </div>
+            <div id="notif-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+          </div>
+        </div>
+        <div style="position:relative;">
+          <div class="avatar-badge" id="avatar-btn" onclick="toggleAccountMenu()" aria-label="Account menu">☺</div>
+          <div id="account-menu" class="hidden dropdown-panel">
+            <div class="admin-id">Signed in as<b id="admin-name-label">—</b></div>
+            <button class="ghost small" style="width:100%;" onclick="logout()">Sign out</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+
+    <section data-panel="overview">
+      <div class="page-head">
+        <div><h2>Overview</h2><p class="subhead">What an operator needs to see first.</p></div>
+        <button class="ghost small" onclick="loadOverview()">↻ Refresh</button>
+      </div>
+      <div class="kpis" id="kpis"></div>
+
+      <div class="dash-grid">
+        <div>
+          <div class="panel-card">
+            <div class="panel-card-head"><h3>Revenue overview</h3><span class="dots">⋯</span></div>
+            <div class="revenue-hero" id="revenue-hero">—</div>
+            <div class="split-track" id="revenue-split"></div>
+            <div class="split-legend" id="revenue-legend"></div>
+            <div class="stat-strip" id="catalog-stats"></div>
+          </div>
+          <div class="panel-card">
+            <div class="panel-card-head"><h3>Upcoming departures</h3><span class="dots">⋯</span></div>
+            <table id="departures-preview" style="margin-bottom:0;"><thead><tr><th>Tour</th><th>Start</th><th>Booked</th><th>Status</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+        <div>
+          <div class="panel-card">
+            <div class="panel-card-head"><h3>Recent notifications</h3><span class="dots">⋯</span></div>
+            <div id="overview-notifs"></div>
+          </div>
+          <div class="panel-card">
+            <div class="panel-card-head"><h3>Quick actions</h3></div>
+            <div class="quick-actions">
+              <button class="ghost" onclick="showTab('crm')">✉ Review custom requests</button>
+              <button class="ghost" onclick="showTab('bookings')">▤ Go to bookings</button>
+              <button class="ghost" onclick="showTab('refunds')">↩ Process refunds</button>
+              <button class="ghost" onclick="showTab('alerts')">⚠ Emergency alerts</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section data-panel="tours" class="hidden">
+      <h2>Tours</h2>
+      <div class="form-card">
+        <h3 id="tour-form-title">Add a new tour</h3>
+        <div class="form-grid">
+          <div><label>Slug (unique, url-safe)</label><input id="t-slug"></div>
+          <div><label>Name</label><input id="t-name"></div>
+          <div><label>Region</label><input id="t-region"></div>
+          <div><label>District (for the homepage map)</label><input id="t-district" placeholder="e.g. Mustang, Kaski, Solukhumbu...">
+            <p style="font-size:11px; color:var(--dim); margin:6px 0 0;">Matched against Nepal's 77 districts (typos are OK) to auto-place a pin on the homepage map — separate from Region above.</p></div>
+          <div class="full"><label>Summary</label><textarea id="t-summary" rows="2"></textarea></div>
+          <div><label>Duration (days)</label><input id="t-duration" type="number"></div>
+          <div><label>Difficulty (1–5)</label><input id="t-level" type="number" min="1" max="5"></div>
+          <div><label>Riding style</label><input id="t-style" placeholder="Enduro, Trail..."></div>
+          <div><label>Distance (km)</label><input id="t-distance" type="number"></div>
+          <div><label>Elevation gain (m)</label><input id="t-gain" type="number"></div>
+          <div><label>Max altitude (m)</label><input id="t-alt" type="number"></div>
+          <div><label>Price from (€)</label><input id="t-price" type="number"></div>
+          <div><label>Best season</label><input id="t-season"></div>
+          <div class="full"><label>Cover image URL</label><input id="t-image" placeholder="https://..."></div>
+        </div>
+        <div class="form-actions">
+          <button onclick="saveTour()">Save tour</button>
+          <button class="ghost" onclick="resetTourForm()">Clear / new tour</button>
+        </div>
+      </div>
+      <table id="tours-table"><thead><tr><th>Cover</th><th>Name</th><th>Region</th><th>Level</th><th>Price</th><th></th></tr></thead><tbody></tbody></table>
+
+      <div class="form-card hidden" id="tour-content-card">
+        <h3>Tour-detail-page content &mdash; <span id="content-tour-name" style="color:var(--paper,var(--dim));"></span></h3>
+        <p class="subhead" style="margin:-10px 0 18px; font-size:12px;">One item per line for the list fields. Anything left blank shows an honest "not specified" state on the tour page &mdash; never fabricated copy.</p>
+        <div class="form-grid">
+          <div><label>Inclusions (one per line)</label><textarea id="tc-inclusions" rows="4" placeholder="All meals during the trek&#10;Support vehicle&#10;Permits"></textarea></div>
+          <div><label>Exclusions (one per line)</label><textarea id="tc-exclusions" rows="4" placeholder="International flights&#10;Travel insurance"></textarea></div>
+          <div><label>Essential equipment (one per line)</label><textarea id="tc-equip-essential" rows="4" placeholder="Full-face helmet&#10;Knee/elbow pads"></textarea></div>
+          <div><label>Recommended equipment (one per line)</label><textarea id="tc-equip-recommended" rows="4" placeholder="GPS watch&#10;Spare tube"></textarea></div>
+          <div class="full"><label>Safety &mdash; hazards</label><textarea id="tc-safety-hazards" rows="2" placeholder="e.g. High-altitude exposure above 3,500m; loose scree on descents."></textarea></div>
+          <div class="full"><label>Safety &mdash; preparation</label><textarea id="tc-safety-prep" rows="2"></textarea></div>
+          <div class="full"><label>Safety &mdash; emergency information</label><textarea id="tc-safety-emergency" rows="2"></textarea></div>
+          <div class="full"><label>Cancellation policy (tour-specific terms only &mdash; the general policy is site-wide)</label><textarea id="tc-cancellation" rows="2" placeholder="e.g. Permit costs for this route are non-refundable once applied for."></textarea></div>
+        </div>
+        <div class="form-actions"><button onclick="saveTourContent()">Save tour-page content</button></div>
+      </div>
+
+      <div class="form-card hidden" id="tour-days-card">
+        <h3 id="day-form-title">Route, day by day &mdash; <span id="days-tour-name" style="color:var(--paper,var(--dim));"></span></h3>
+        <p class="subhead" style="margin:-10px 0 18px; font-size:12px;">Feeds the day tabs + elevation chart on that tour's detail page, the same way Upper Mustang's does.</p>
+        <div class="form-grid">
+          <div><label>Day number</label><input id="td-num" type="number" min="1"></div>
+          <div class="full"><label>Title</label><input id="td-title" placeholder="Kagbeni &rarr; Chele via the windy canyon"></div>
+          <div><label>Distance (km)</label><input id="td-dist" type="number" step="0.1"></div>
+          <div><label>Elevation gain (m)</label><input id="td-gain" type="number"></div>
+          <div><label>Elevation loss (m)</label><input id="td-loss" type="number"></div>
+          <div><label>High point (m)</label><input id="td-high" type="number"></div>
+          <div><label>Riding hours</label><input id="td-hours" placeholder="5&ndash;6"></div>
+          <div><label>Overnight place</label><input id="td-place"></div>
+          <div class="full"><label>Terrain</label><input id="td-terrain" placeholder="Singletrack, canyon rim"></div>
+          <div><label>Overnight lat (optional)</label><input id="td-lat" type="number" step="0.0001"></div>
+          <div><label>Overnight lng (optional)</label><input id="td-lng" type="number" step="0.0001"></div>
+        </div>
+        <div class="form-actions">
+          <button onclick="saveDay()">Save day</button>
+          <button class="ghost" onclick="resetDayForm()">Clear / new day</button>
+        </div>
+      </div>
+      <table class="hidden" id="tour-days-table"><thead><tr><th>#</th><th>Title</th><th>Dist</th><th>Gain / Loss</th><th>High pt</th><th>Overnight</th><th></th></tr></thead><tbody></tbody></table>
+    </section>
+
+    <section data-panel="departures" class="hidden">
+      <h2>Departures / dates</h2>
+      <div class="form-card">
+        <h3>Add a new date</h3>
+        <div class="form-grid">
+          <div><label>Tour</label><select id="d-tour" onchange="previewDepartureEnd()"></select></div>
+          <div><label>Guide</label><select id="d-guide"><option value="">Unassigned</option></select></div>
+          <div><label>Capacity</label><input id="d-capacity" type="number" value="10"></div>
+          <div><label>Start date (departure day)</label><input id="d-start" type="date" oninput="previewDepartureEnd()"></div>
+          <div><label>End date</label><div id="d-end-preview" style="padding:8px 0; color:var(--dim, #888); font-size:13px;">Pick a tour and start date —<br>end date is set automatically from the tour's length.</div></div>
+          <div><label>Status</label><select id="d-status">
+            <option value="open">Open</option><option value="request_only">Request-only</option>
+          </select>
+          <p style="font-size:11px; color:var(--dim); margin:6px 0 0;">Few spaces/Full are set automatically once people book — see the Departures table below.</p></div>
+        </div>
+        <div class="form-actions"><button onclick="addDeparture()">Add date</button></div>
+      </div>
+      <table id="all-departures-table"><thead><tr><th>Tour</th><th>Dates</th><th>Guide</th><th>Booked</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+    </section>
+
+    <section data-panel="guides" class="hidden">
+      <h2>Guides</h2>
+      <div class="form-card">
+        <h3 id="guide-form-title">Add a guide</h3>
+        <div class="form-grid">
+          <div><label>Name</label><input id="g-name"></div>
+          <div><label>Role</label><input id="g-role" placeholder="Lead MTB Guide"></div>
+          <div><label>Years experience</label><input id="g-years" type="number"></div>
+          <div><label>Languages</label><input id="g-languages"></div>
+          <div><label>Specialties</label><input id="g-specialties"></div>
+          <div><label>Email (for guide app login)</label><input id="g-email"></div>
+          <div><label>Password (leave blank to keep)</label><input id="g-password" type="password"></div>
+          <div class="full"><label>Photo URL</label><input id="g-photo"></div>
+          <div class="full"><label>Bio</label><textarea id="g-bio" rows="2"></textarea></div>
+          <div><label>Verified qualifications (one per line)</label><textarea id="g-quals-verified" rows="2" placeholder="Wilderness First Responder (WFR)"></textarea>
+            <p style="font-size:11px; color:var(--dim); margin:6px 0 0;">Shown publicly on guide profiles &mdash; only add something here once you've actually checked it.</p></div>
+          <div><label>Unverified / claimed qualifications (one per line)</label><textarea id="g-quals-unverified" rows="2"></textarea>
+            <p style="font-size:11px; color:var(--dim); margin:6px 0 0;">Recorded but never shown publicly until moved to Verified above.</p></div>
+        </div>
+        <div class="form-actions">
+          <button onclick="saveGuide()">Save guide</button>
+          <button class="ghost" onclick="resetGuideForm()">Clear / new guide</button>
+        </div>
+      </div>
+      <table id="guides-table"><thead><tr><th>Photo</th><th>Name</th><th>Role</th><th>Years</th><th></th></tr></thead><tbody></tbody></table>
+    </section>
+
+    <section data-panel="gallery" class="hidden">
+      <h2>Gallery</h2>
+      <div id="gallery-filter-banner" class="hidden" style="background:var(--panel-2,#1c2430); border:1px solid var(--border,#2a3444); border-radius:10px; padding:10px 14px; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+        <span>Showing photos for <b id="gallery-filter-name"></b> — the tour detail page's gallery pulls exactly these.</span>
+        <button class="small ghost" onclick="clearGalleryFilter()">Show all photos</button>
+      </div>
+      <div class="form-card">
+        <h3>Add an image</h3>
+        <div class="form-grid">
+          <div class="full"><label>Image URL</label><input id="img-url" placeholder="https://..."></div>
+          <div><label>Caption</label><input id="img-caption"></div>
+          <div><label>Category</label><select id="img-category"><option value="gallery">Gallery</option><option value="hero">Hero</option><option value="tour">Tour</option><option value="guide">Guide</option></select></div>
+          <div><label>Linked tour (optional)</label><select id="img-tour"><option value="">None</option></select></div>
+        </div>
+        <div class="form-actions"><button onclick="addImage()">Add image</button></div>
+      </div>
+      <table id="gallery-table"><thead><tr><th>Preview</th><th>Caption</th><th>Category</th><th>Tour</th><th></th></tr></thead><tbody></tbody></table>
+    </section>
+
+    <section data-panel="destinations" class="hidden">
+      <h2>Destinations</h2>
+      <div class="form-card">
+        <h3>Add a destination</h3>
+        <div class="form-grid">
+          <div><label>Slug</label><input id="dest-slug"></div>
+          <div><label>Name</label><input id="dest-name"></div>
+          <div><label>Region label</label><input id="dest-region"></div>
+          <div><label>Latitude</label><input id="dest-lat" type="number" step="0.0001"></div>
+          <div><label>Longitude</label><input id="dest-lng" type="number" step="0.0001"></div>
+          <div><label>Hero image URL</label><input id="dest-image"></div>
+          <div class="full"><label>Description</label><textarea id="dest-desc" rows="2"></textarea></div>
+        </div>
+        <div class="form-actions"><button onclick="addDestination()">Add destination</button></div>
+      </div>
+      <table id="destinations-table"><thead><tr><th>Name</th><th>Region</th><th>Lat, Lng</th><th></th></tr></thead><tbody></tbody></table>
+    </section>
+
+    <section data-panel="crm" class="hidden">
+      <h2>Custom tour requests</h2>
+      <p class="subhead">Request &rarr; Contacted &rarr; Proposal sent &rarr; Approved &rarr; Deposit &rarr; Confirmed &rarr; Completed. Every status change is logged — see a request's "History" link.</p>
+      <table id="crm-table"><thead><tr><th>Requested by</th><th>Destination</th><th>Duration</th><th>Style</th><th>Budget</th><th>Status</th><th>Proposal</th><th></th></tr></thead><tbody></tbody></table>
+    </section>
+
+    <section data-panel="bookings" class="hidden">
+      <h2>Bookings</h2>
+      <p class="subhead">An unpaid ("awaiting payment") booking auto-cancels 72 hours after it's made — see README section 9.</p>
+      <table id="bookings-table"><thead><tr><th>Ref</th><th>Requested by</th><th>Tour</th><th>Departure</th><th>Riders</th><th>Add-ons / discount</th><th>Paid</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+    </section>
+
+    <section data-panel="addons" class="hidden">
+      <h2>Add-ons</h2>
+      <p class="subhead">The published, priced catalog checkout reads from &mdash; never hardcoded in the frontend.</p>
+      <div class="form-card">
+        <h3 id="addon-form-title">Add a new add-on</h3>
+        <div class="form-grid">
+          <div><label>Key (lowercase, underscores)</label><input id="ad-key" placeholder="bike_rental"></div>
+          <div><label>Label</label><input id="ad-label" placeholder="Bike rental"></div>
+          <div><label>Price (€)</label><input id="ad-price" type="number" step="0.01"></div>
+          <div><label>Pricing unit</label><select id="ad-unit">
+            <option value="per_rider">Per rider</option><option value="per_booking">Per booking (once, regardless of group size)</option>
+          </select></div>
+          <div class="full"><label>Description</label><input id="ad-desc"></div>
+          <div><label>Active</label><select id="ad-active"><option value="true">Yes &mdash; shown at checkout</option><option value="false">No &mdash; hidden</option></select></div>
+        </div>
+        <div class="form-actions">
+          <button onclick="saveAddon()">Save add-on</button>
+          <button class="ghost" onclick="resetAddonForm()">Clear / new add-on</button>
+        </div>
+      </div>
+      <table id="addons-table"><thead><tr><th>Key</th><th>Label</th><th>Price</th><th>Unit</th><th>Active</th><th></th></tr></thead><tbody></tbody></table>
+    </section>
+
+    <section data-panel="promos" class="hidden">
+      <h2>Promo codes</h2>
+      <p class="subhead">Discounts are always calculated server-side at booking time &mdash; a rider only ever supplies the code.</p>
+      <div class="form-card">
+        <h3 id="promo-form-title">Add a new promo code</h3>
+        <div class="form-grid">
+          <div><label>Code</label><input id="pr-code" placeholder="SAVE10" style="text-transform:uppercase;"></div>
+          <div><label>Description</label><input id="pr-desc"></div>
+          <div><label>Discount type</label><select id="pr-type"><option value="percent">Percent off</option><option value="fixed">Fixed amount off (€)</option></select></div>
+          <div><label>Discount value</label><input id="pr-value" type="number" step="0.01" placeholder="10 (% or €, per type above)"></div>
+          <div><label>Max uses (blank = unlimited)</label><input id="pr-max-uses" type="number" min="1"></div>
+          <div><label>Min riders (optional)</label><input id="pr-min-riders" type="number" min="1"></div>
+          <div><label>Restrict to tour (optional)</label><select id="pr-tour"><option value="">Any tour</option></select></div>
+          <div><label>Valid from (optional)</label><input id="pr-from" type="date"></div>
+          <div><label>Valid until (optional)</label><input id="pr-until" type="date"></div>
+          <div><label>Active</label><select id="pr-active"><option value="true">Yes</option><option value="false">No</option></select></div>
+        </div>
+        <div class="form-actions">
+          <button onclick="savePromo()">Save promo code</button>
+          <button class="ghost" onclick="resetPromoForm()">Clear / new code</button>
+        </div>
+      </div>
+      <table id="promos-table"><thead><tr><th>Code</th><th>Discount</th><th>Uses</th><th>Restrictions</th><th>Valid</th><th>Active</th><th></th></tr></thead><tbody></tbody></table>
+    </section>
+
+    <section data-panel="refunds" class="hidden">
+      <h2>Refunds</h2>
+      <p class="subhead">A refund starts "pending" the moment a booking is cancelled &mdash; it only becomes "processed" once you confirm the money has actually been sent back (step-up: your own password), since no live payment gateway confirms that automatically.</p>
+      <table id="refunds-table"><thead><tr><th>Rider</th><th>Tour</th><th>Amount</th><th>Reason</th><th>Requested</th><th>Status</th><th></th></tr></thead><tbody></tbody></table>
+
+      <h3 style="margin-top:40px;">Cancellation refund tiers</h3>
+      <p class="subhead" style="margin-top:-6px;">Whichever tier's "days before departure" the cancellation still meets or exceeds applies, largest first; no match = 0% refund.</p>
+      <div class="form-card">
+        <div class="form-grid">
+          <div><label>Min days before departure</label><input id="cr-days" type="number" min="0"></div>
+          <div><label>Refund percent</label><input id="cr-percent" type="number" min="0" max="100"></div>
+        </div>
+        <div class="form-actions"><button onclick="addCancellationRule()">Add tier</button></div>
+      </div>
+      <table id="cancellation-rules-table"><thead><tr><th>Min days before departure</th><th>Refund %</th><th></th></tr></thead><tbody></tbody></table>
+    </section>
+
+    <section data-panel="reviews" class="hidden">
+      <h2>Reviews</h2>
+      <p class="subhead">Rider feedback, only ever left by someone who actually rode that specific departure. Remove anything abusive or posted in error.</p>
+      <table id="reviews-table"><thead><tr><th>Tour</th><th>Rider</th><th>Scores</th><th>Quote</th><th>Posted</th><th></th></tr></thead><tbody></tbody></table>
+    </section>
+
+    <section data-panel="users" class="hidden">
+      <h2>Users</h2>
+      <p class="subhead">Rider accounts created via sign-up on the public site.</p>
+      <table id="users-table"><thead><tr><th>Name</th><th>Email</th><th>Country</th><th>Joined</th><th>Bookings</th><th>Requests</th><th></th></tr></thead><tbody></tbody></table>
+    </section>
+
+    <section data-panel="alerts" class="hidden">
+      <h2>Emergency alerts</h2>
+      <p class="subhead">DEMO ONLY — see README. Nothing here contacts a real responder.</p>
+      <div id="alerts"></div>
+    </section>
+
+    </main>
+  </div>
+</div>
+
+<script>
+const API = window.HIGHROUTE_API_BASE || 'http://localhost:4000';
+// The public site runs as a separate static server (see README "How to run
+// it" — backend on :4000, frontend on :8080), so a link from here to e.g.
+// tour-detail.html can't be a bare relative path (that would resolve against
+// this admin panel's own origin, which doesn't serve the public site).
+const FRONTEND = window.HIGHROUTE_FRONTEND_BASE || 'http://localhost:8080';
+
+/** Escapes text before it's interpolated into an innerHTML template string.
+ *  Everything rendered below ultimately comes from the API — tours/guides/
+ *  gallery/destinations are admin-authored, but custom-request and emergency
+ *  alert fields are submitted by anonymous site visitors, so none of it can
+ *  be trusted as pre-formed HTML. */
+function esc(v){ return String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
+
+function getToken(){ return localStorage.getItem('hr_admin_token'); }
+function getAdminName(){ return localStorage.getItem('hr_admin_name'); }
+
+async function login(email, password){
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  try {
+    const res = await fetch(API + '/api/admin/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { errEl.textContent = data.error || 'Sign-in failed'; return; }
+    localStorage.setItem('hr_admin_token', data.token);
+    localStorage.setItem('hr_admin_name', data.admin.name);
+    localStorage.setItem('hr_admin_email', data.admin.email);
+    boot();
+  } catch (e) { errEl.textContent = 'Could not reach the server: ' + e.message; }
+}
+document.getElementById('login-form').addEventListener('submit', e => {
+  e.preventDefault();
+  login(document.getElementById('login-email').value.trim(), document.getElementById('login-password').value);
+});
+
+async function logout(){
+  try { await fetch(API + '/api/auth/session', { method: 'DELETE', headers: { Authorization: 'Bearer ' + getToken() } }); } catch { /* best-effort */ }
+  localStorage.removeItem('hr_admin_token');
+  localStorage.removeItem('hr_admin_name');
+  localStorage.removeItem('hr_admin_email');
+  location.reload();
+}
+
+async function api(path){
+  const res = await fetch(API + path, { headers: { Authorization: 'Bearer ' + getToken() } });
+  if (res.status === 401) { logout(); throw new Error('Unauthorized'); }
+  return res.json();
+}
+async function apiSend(path, method, body){
+  const res = await fetch(API + path, {
+    method, headers: { 'Content-Type':'application/json', Authorization: 'Bearer ' + getToken() },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+const money = c => (c/100).toLocaleString(undefined, { style:'currency', currency:'EUR' });
+const statusColor = s => ({ open:'var(--green)', few_spaces:'var(--amber)', full:'var(--red)', request_only:'var(--glacier)', cancelled:'#666' }[s] || 'var(--dim)');
+const bookingStatusColor = s => ({ pending:'var(--amber)', deposit_paid:'var(--glacier)', balance_due:'var(--amber)', paid:'var(--green)', completed:'var(--green)', cancelled:'var(--red)' }[s] || 'var(--dim)');
+/** Top-right toast notifications for every save/edit/cancel/delete action in
+ *  the admin panel. type is one of success/error/warning/info — each has its
+ *  own accent color and icon badge (see #toast-stack CSS). Stays up for
+ *  DURATION_MS, shown by a depleting progress bar; hovering pauses both the
+ *  bar and the dismiss timer (so reading a longer message never gets cut
+ *  off), and clicking dismisses immediately. */
+const TOAST_ICON = { success:'✓', error:'✕', warning:'⚠', info:'ℹ' };
+const TOAST_DURATION_MS = 6000;
+function showToast(message, type){
+  type = TOAST_ICON[type] ? type : 'info';
+  const stack = document.getElementById('toast-stack');
+  const card = document.createElement('div');
+  card.className = 'toast-card ' + type;
+  card.innerHTML = `<span class="toast-ic">${TOAST_ICON[type]}</span><span class="toast-msg">${esc(message)}</span>
+    <div class="toast-progress" style="animation-duration:${TOAST_DURATION_MS}ms;"></div>`;
+  const progress = card.querySelector('.toast-progress');
+
+  let remaining = TOAST_DURATION_MS;
+  let startedAt = Date.now();
+  let timer;
+  const clear = () => clearTimeout(timer);
+  const remove = () => { clear(); card.classList.add('leaving'); setTimeout(() => card.remove(), 280); };
+  const schedule = ms => { startedAt = Date.now(); timer = setTimeout(remove, ms); };
+
+  card.addEventListener('mouseenter', () => {
+    clear();
+    remaining -= (Date.now() - startedAt);
+    progress.style.animationPlayState = 'paused';
+  });
+  card.addEventListener('mouseleave', () => {
+    schedule(Math.max(remaining, 300));
+    progress.style.animationPlayState = 'running';
+  });
+  card.addEventListener('click', remove);
+
+  stack.appendChild(card);
+  schedule(TOAST_DURATION_MS);
+}
+
+/** A small "type your admin password to confirm" modal for destructive
+ *  actions (currently: deleting a user). onConfirm(password) runs the actual
+ *  request; the modal shows its error inline and stays open on failure
+ *  (e.g. wrong password) instead of silently closing. */
+function openConfirmPassword(title, message, onConfirm){
+  let overlay = document.getElementById('confirm-overlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'confirm-overlay';
+    overlay.style.cssText = 'position:fixed; inset:0; background:rgba(21,20,15,0.88); backdrop-filter:blur(2px); z-index:500; display:flex; align-items:center; justify-content:center; padding:20px;';
+    overlay.innerHTML = `
+      <div style="width:100%; max-width:380px; background:linear-gradient(160deg, var(--stone), var(--ink-soft)); border:1px solid var(--line); padding:28px 26px; border-radius:10px; box-shadow:0 20px 60px -18px rgba(0,0,0,0.7);">
+        <h3 id="confirm-title" style="font-size:16px; margin:0 0 8px; text-transform:none; letter-spacing:0;"></h3>
+        <p id="confirm-message" style="color:var(--dim); font-size:12.5px; line-height:1.6; margin:0 0 18px;"></p>
+        <label style="display:block; font-size:11px; color:var(--dim); margin-bottom:6px;">Your admin password</label>
+        <input id="confirm-password" type="password" autocomplete="current-password">
+        <div id="confirm-error" class="toast err" style="margin-bottom:6px;"></div>
+        <div style="display:flex; gap:10px; margin-top:12px;">
+          <button class="danger" id="confirm-ok" style="flex:1;">Confirm delete</button>
+          <button class="ghost" id="confirm-cancel" style="flex:1;">Cancel</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) closeConfirmPassword(); });
+    overlay.querySelector('#confirm-cancel').addEventListener('click', closeConfirmPassword);
+  }
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-message').textContent = message;
+  document.getElementById('confirm-password').value = '';
+  document.getElementById('confirm-error').textContent = '';
+  overlay.classList.remove('hidden');
+  overlay.style.display = 'flex';
+  const okBtn = document.getElementById('confirm-ok');
+  const newOkBtn = okBtn.cloneNode(true); // drop any previous action's listener
+  okBtn.replaceWith(newOkBtn);
+  newOkBtn.addEventListener('click', async () => {
+    const password = document.getElementById('confirm-password').value;
+    const errEl = document.getElementById('confirm-error');
+    if (!password) { errEl.textContent = 'Password is required.'; return; }
+    newOkBtn.disabled = true;
+    try {
+      await onConfirm(password);
+      closeConfirmPassword();
+    } catch (e) {
+      errEl.textContent = e.message;
+    } finally {
+      newOkBtn.disabled = false;
+    }
+  });
+}
+function closeConfirmPassword(){
+  const overlay = document.getElementById('confirm-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+
+/* ---------- tab switching ---------- */
+const TAB_LOADERS = { overview: loadOverview, tours: loadTours, departures: loadDepartures, guides: loadGuides,
+                       gallery: loadGallery, destinations: loadDestinations, crm: loadCrm, bookings: loadBookings,
+                       addons: loadAddons, promos: loadPromos, refunds: loadRefunds,
+                       reviews: loadReviews, users: loadUsers, alerts: loadAlerts };
+// Keeps the current tab in the URL (#crm, #bookings, ...) so a page that
+// links back to "admin.html" can send the admin to a specific tab instead of
+// always landing on Overview (see custom-request.html's "Back to CRM" link),
+// and so the browser's own back/forward buttons move between tabs too.
+let currentTab = null;
+function showTab(name){
+  if (!TAB_LOADERS[name]) name = 'overview';
+  if (name === currentTab) return; // guards against the hashchange listener re-running this on the hash write two lines down
+  currentTab = name;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('main [data-panel]').forEach(p => p.classList.toggle('hidden', p.dataset.panel !== name));
+  if (location.hash.slice(1) !== name) location.hash = name;
+  TAB_LOADERS[name]();
+}
+window.addEventListener('hashchange', () => showTab(location.hash.slice(1)));
+
+/* ---------- boot ---------- */
+async function boot(){
+  document.getElementById('login-gate').classList.add('hidden');
+  document.getElementById('shell').classList.remove('hidden');
+  document.getElementById('admin-name-label').textContent = getAdminName() || 'Admin';
+  document.getElementById('avatar-btn').textContent = (getAdminName() || 'A').trim().charAt(0).toUpperCase();
+  await populateSelectors();
+  // Honors whatever tab the URL already names (e.g. admin.html#crm from
+  // custom-request.html's "Back to CRM" link) instead of always booting into
+  // Overview regardless of where the admin actually came from.
+  showTab(location.hash.slice(1) || 'overview');
+  loadNotifications();
+  setInterval(loadNotifications, 60000);
+}
+
+let toursCache = [];
+let guidesCache = [];
+async function populateSelectors(){
+  toursCache = (await fetch(API + '/api/tours').then(r => r.json())).tours;
+  guidesCache = (await fetch(API + '/api/guides').then(r => r.json())).guides;
+  const tourOpts = toursCache.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+  const guideOpts = guidesCache.map(g => `<option value="${g.id}">${esc(g.name)}</option>`).join('');
+  document.getElementById('d-tour').innerHTML = tourOpts;
+  document.getElementById('d-guide').innerHTML += guideOpts;
+  document.getElementById('img-tour').innerHTML += tourOpts;
+}
+
+/** Mirrors the server's computeEndDate() in routes/departures.js — this is
+ *  a preview only, purely so the admin can see the trip length before
+ *  submitting; the server always recomputes the real end_date itself. */
+function computeEndDatePreview(startDate, durationDays){
+  const d = new Date(startDate + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + (Number(durationDays) - 1));
+  return d.toISOString().slice(0, 10);
+}
+function previewDepartureEnd(){
+  const el = document.getElementById('d-end-preview');
+  const tour = toursCache.find(t => t.id === Number(document.getElementById('d-tour').value));
+  const startDate = document.getElementById('d-start').value;
+  if (!tour || !startDate) { el.textContent = "Pick a tour and start date — end date is set automatically from the tour's length."; return; }
+  el.textContent = computeEndDatePreview(startDate, tour.duration_days) + ' (' + tour.duration_days + ' days)';
+}
+
+/* ---------- overview ---------- */
+async function loadOverview(){
+  const summary = await api('/api/admin/summary');
+
+  const KPI_DEFS = [
+    { label:'Upcoming departures', value: summary.upcoming_departures, icon:'◷', color:'var(--glacier)' },
+    { label:'Riders booked', value: summary.riders_booked_upcoming, icon:'☺', color:'var(--signal)' },
+    { label:'Revenue collected', value: money(summary.revenue_collected_cents), icon:'€', color:'var(--green)' },
+    { label:'Pending payments', value: money(summary.pending_payments_cents), icon:'◔', color:'var(--amber)' },
+    { label:'New custom requests', value: summary.pending_custom_requests, icon:'✉', color:'var(--glacier)' },
+  ];
+  document.getElementById('kpis').innerHTML = KPI_DEFS.map(k => `
+    <div class="kpi">
+      <div class="kpi-top"><span>${esc(k.label)}</span><span class="kpi-icon" style="background:${k.color}22; color:${k.color};">${k.icon}</span></div>
+      <b>${k.value}</b>
+    </div>`).join('');
+
+  // Revenue split: the two real amounts this panel already tracks (collected
+  // vs still-pending), shown as a proportion — no fabricated time-series,
+  // since the summary endpoint only ever gives point-in-time totals.
+  const collected = summary.revenue_collected_cents, pending = summary.pending_payments_cents;
+  const totalRev = collected + pending;
+  document.getElementById('revenue-hero').textContent = money(collected);
+  document.getElementById('revenue-split').innerHTML = totalRev > 0
+    ? `<div class="split-seg" style="width:${(collected/totalRev*100).toFixed(1)}%; background:var(--green);"></div>
+       <div class="split-seg" style="width:${(pending/totalRev*100).toFixed(1)}%; background:var(--amber);"></div>`
+    : `<div class="split-seg" style="width:100%; background:var(--line);"></div>`;
+  document.getElementById('revenue-legend').innerHTML = `
+    <span><span class="legend-dot" style="background:var(--green);"></span>Collected <b>${money(collected)}</b></span>
+    <span><span class="legend-dot" style="background:var(--amber);"></span>Pending <b>${money(pending)}</b></span>`;
+
+  // Catalog at a glance — real counts already loaded for the Tours/Guides
+  // forms above (populateSelectors), not a new endpoint.
+  const catalogStats = [
+    { label:'Tours', value: toursCache.length, color:'var(--signal)' },
+    { label:'Guides', value: guidesCache.length, color:'var(--glacier)' },
+    { label:'Upcoming departures', value: summary.upcoming_departures, color:'var(--green)' },
+  ];
+  const maxStat = Math.max(1, ...catalogStats.map(s => s.value));
+  document.getElementById('catalog-stats').innerHTML = catalogStats.map(s => `
+    <div class="stat-item"><span>${esc(s.label)}</span><b>${s.value}</b>
+      <div class="stat-bar-track"><div class="stat-bar-fill" style="width:${(s.value/maxStat*100).toFixed(0)}%; background:${s.color};"></div></div>
+    </div>`).join('');
+
+  document.querySelector('#departures-preview tbody').innerHTML = summary.next_departures.map(d => `
+    <tr><td><span class="row-avatar">${esc((d.tour_name || '?').charAt(0).toUpperCase())}</span>${esc(d.tour_name)}</td>
+    <td>${esc(d.start_date)}</td><td>${d.seats_booked}/${d.capacity}</td>
+    <td><span class="pip" style="background:${statusColor(d.status)}"></span>${esc(d.status)}</td></tr>`).join('')
+    || '<tr><td colspan="4" class="empty-note">No upcoming departures.</td></tr>';
+
+  // Reuses the same notifications the bell icon shows — just the most recent
+  // few, inline on the dashboard instead of only in the dropdown.
+  await loadNotifications();
+  document.getElementById('overview-notifs').innerHTML = notifCache.length
+    ? notifCache.slice(0, 5).map(n => `
+      <div class="notif-mini"><div class="t">${esc(n.title)}</div>${n.body ? `<div class="m">${esc(n.body)}</div>` : ''}</div>`).join('')
+    : '<p class="empty-note" style="margin:0;">No notifications yet.</p>';
+}
+
+/* ---------- tours ---------- */
+let editingTourId = null;
+async function loadTours(){
+  const data = await fetch(API + '/api/tours').then(r => r.json());
+  document.querySelector('#tours-table tbody').innerHTML = data.tours.map(t => `
+    <tr><td>${t.image_url ? `<img class="thumb" src="${esc(t.image_url)}">` : '—'}</td>
+    <td>${esc(t.name)}</td><td>${esc(t.region)}</td><td>L${t.difficulty_level}</td><td>${money(t.price_from_cents)}</td>
+    <td class="row-actions"><button class="small ghost" onclick="editTour(${t.id})">Edit</button>
+        <button class="small ghost" onclick="manageTourPhotos(${t.id})">Photos</button>
+        <button class="small danger" onclick="deleteTour(${t.id})">Delete</button></td></tr>`).join('')
+    || '<tr><td colspan="6" class="empty-note">No tours yet.</td></tr>';
+}
+function resetTourForm(){
+  editingTourId = null;
+  document.getElementById('tour-form-title').textContent = 'Add a new tour';
+  ['t-slug','t-name','t-region','t-district','t-summary','t-duration','t-level','t-style','t-distance','t-gain','t-alt','t-price','t-season','t-image']
+    .forEach(id => document.getElementById(id).value = '');
+  document.getElementById('t-slug').disabled = false;
+  hideDaysEditor();
+  hideContentEditor();
+}
+async function editTour(id){
+  const t = await fetch(API + '/api/tours/' + (await tourSlugFromId(id))).then(r => r.json());
+  editingTourId = id;
+  document.getElementById('tour-form-title').textContent = 'Editing: ' + t.name;
+  document.getElementById('t-slug').value = t.slug; document.getElementById('t-slug').disabled = true;
+  document.getElementById('t-name').value = t.name;
+  document.getElementById('t-region').value = t.region;
+  document.getElementById('t-district').value = t.district || '';
+  document.getElementById('t-summary').value = t.summary;
+  document.getElementById('t-duration').value = t.duration_days;
+  document.getElementById('t-level').value = t.difficulty_level;
+  document.getElementById('t-style').value = t.riding_style;
+  document.getElementById('t-distance').value = t.distance_km;
+  document.getElementById('t-gain').value = t.elevation_gain_m;
+  document.getElementById('t-alt').value = t.max_altitude_m;
+  document.getElementById('t-price').value = t.price_from_cents / 100;
+  document.getElementById('t-season').value = t.best_season || '';
+  document.getElementById('t-image').value = t.image_url || '';
+  showDaysEditor(t);
+  showContentEditor(t);
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+
+/* ---------- tour-detail-page content (inclusions/exclusions/equipment/safety/cancellation) ---------- */
+let contentTourId = null;
+function linesToArray(text){ return text.split('\n').map(s => s.trim()).filter(Boolean); }
+function arrayToLines(arr){ return (arr || []).join('\n'); }
+function hideContentEditor(){
+  contentTourId = null;
+  document.getElementById('tour-content-card').classList.add('hidden');
+}
+function showContentEditor(t){
+  contentTourId = t.id;
+  document.getElementById('content-tour-name').textContent = t.name;
+  document.getElementById('tc-inclusions').value = arrayToLines(t.inclusions);
+  document.getElementById('tc-exclusions').value = arrayToLines(t.exclusions);
+  document.getElementById('tc-equip-essential').value = arrayToLines(t.equipment_essential);
+  document.getElementById('tc-equip-recommended').value = arrayToLines(t.equipment_recommended);
+  document.getElementById('tc-safety-hazards').value = t.safety_hazards || '';
+  document.getElementById('tc-safety-prep').value = t.safety_preparation || '';
+  document.getElementById('tc-safety-emergency').value = t.safety_emergency || '';
+  document.getElementById('tc-cancellation').value = t.cancellation_policy || '';
+  document.getElementById('tour-content-card').classList.remove('hidden');
+}
+async function saveTourContent(){
+  if (!contentTourId) return;
+  try {
+    await apiSend('/api/admin/tours/' + contentTourId, 'PATCH', {
+      inclusions: linesToArray(document.getElementById('tc-inclusions').value),
+      exclusions: linesToArray(document.getElementById('tc-exclusions').value),
+      equipmentEssential: linesToArray(document.getElementById('tc-equip-essential').value),
+      equipmentRecommended: linesToArray(document.getElementById('tc-equip-recommended').value),
+      safetyHazards: document.getElementById('tc-safety-hazards').value.trim() || null,
+      safetyPreparation: document.getElementById('tc-safety-prep').value.trim() || null,
+      safetyEmergency: document.getElementById('tc-safety-emergency').value.trim() || null,
+      cancellationPolicy: document.getElementById('tc-cancellation').value.trim() || null,
+    });
+    showToast('Tour-page content saved.', 'success');
+    loadTours();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+/* ---------- route, day by day (nested under the tour being edited) ---------- */
+let daysTourId = null;
+let currentTourDays = [];
+let editingDayId = null;
+function hideDaysEditor(){
+  daysTourId = null; currentTourDays = []; editingDayId = null;
+  document.getElementById('tour-days-card').classList.add('hidden');
+  document.getElementById('tour-days-table').classList.add('hidden');
+}
+function showDaysEditor(t){
+  daysTourId = t.id;
+  currentTourDays = t.days || [];
+  document.getElementById('days-tour-name').textContent = t.name;
+  document.getElementById('tour-days-card').classList.remove('hidden');
+  document.getElementById('tour-days-table').classList.remove('hidden');
+  resetDayForm();
+  renderDaysTable();
+}
+function renderDaysTable(){
+  document.querySelector('#tour-days-table tbody').innerHTML = currentTourDays.map(d => `
+    <tr><td>${d.day_number}</td><td>${esc(d.title)}</td><td>${d.distance_km}km</td>
+    <td>+${d.elevation_gain_m}m / &minus;${d.elevation_loss_m}m</td><td>${d.high_point_m}m</td><td>${esc(d.overnight_place)}</td>
+    <td class="row-actions"><button class="small ghost" onclick="editDay(${d.id})">Edit</button>
+        <button class="small danger" onclick="deleteDay(${d.id})">Delete</button></td></tr>`).join('')
+    || '<tr><td colspan="7" class="empty-note">No days yet — add day 1 above.</td></tr>';
+}
+function resetDayForm(){
+  editingDayId = null;
+  ['td-num','td-title','td-dist','td-gain','td-loss','td-high','td-hours','td-place','td-terrain','td-lat','td-lng']
+    .forEach(id => document.getElementById(id).value = '');
+  const nextNum = currentTourDays.length ? Math.max(...currentTourDays.map(d => d.day_number)) + 1 : 1;
+  document.getElementById('td-num').value = nextNum;
+}
+function editDay(id){
+  const d = currentTourDays.find(x => x.id === id);
+  if (!d) return;
+  editingDayId = id;
+  document.getElementById('td-num').value = d.day_number;
+  document.getElementById('td-title').value = d.title;
+  document.getElementById('td-dist').value = d.distance_km;
+  document.getElementById('td-gain').value = d.elevation_gain_m;
+  document.getElementById('td-loss').value = d.elevation_loss_m;
+  document.getElementById('td-high').value = d.high_point_m;
+  document.getElementById('td-hours').value = d.riding_hours;
+  document.getElementById('td-place').value = d.overnight_place;
+  document.getElementById('td-terrain').value = d.terrain;
+  document.getElementById('td-lat').value = d.overnight_lat ?? '';
+  document.getElementById('td-lng').value = d.overnight_lng ?? '';
+  document.getElementById('tour-days-card').scrollIntoView({ behavior:'smooth', block:'center' });
+}
+async function saveDay(){
+  if (!daysTourId) return;
+  const payload = {
+    dayNumber: Number(document.getElementById('td-num').value),
+    title: document.getElementById('td-title').value.trim(),
+    distanceKm: Number(document.getElementById('td-dist').value),
+    elevationGainM: Number(document.getElementById('td-gain').value),
+    elevationLossM: Number(document.getElementById('td-loss').value),
+    highPointM: Number(document.getElementById('td-high').value),
+    ridingHours: document.getElementById('td-hours').value.trim(),
+    overnightPlace: document.getElementById('td-place').value.trim(),
+    terrain: document.getElementById('td-terrain').value.trim(),
+    overnightLat: document.getElementById('td-lat').value ? Number(document.getElementById('td-lat').value) : null,
+    overnightLng: document.getElementById('td-lng').value ? Number(document.getElementById('td-lng').value) : null,
+  };
+  try {
+    if (editingDayId) await apiSend('/api/admin/tours/' + daysTourId + '/days/' + editingDayId, 'PATCH', payload);
+    else await apiSend('/api/admin/tours/' + daysTourId + '/days', 'POST', payload);
+    showToast('Day saved.', 'success');
+    const t = await fetch(API + '/api/tours/' + (await tourSlugFromId(daysTourId))).then(r => r.json());
+    currentTourDays = t.days || [];
+    resetDayForm();
+    renderDaysTable();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function deleteDay(id){
+  if (!daysTourId || !confirm('Delete this day from the itinerary?')) return;
+  try {
+    await apiSend('/api/admin/tours/' + daysTourId + '/days/' + id, 'DELETE');
+    currentTourDays = currentTourDays.filter(d => d.id !== id);
+    renderDaysTable();
+    showToast('Day removed.', 'success');
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function tourSlugFromId(id){
+  const data = await fetch(API + '/api/tours').then(r => r.json());
+  return data.tours.find(t => t.id === id).slug;
+}
+async function saveTour(){
+  const payload = {
+    slug: document.getElementById('t-slug').value.trim(),
+    name: document.getElementById('t-name').value.trim(),
+    region: document.getElementById('t-region').value.trim(),
+    district: document.getElementById('t-district').value.trim(),
+    summary: document.getElementById('t-summary').value.trim(),
+    durationDays: Number(document.getElementById('t-duration').value),
+    difficultyLevel: Number(document.getElementById('t-level').value),
+    ridingStyle: document.getElementById('t-style').value.trim(),
+    distanceKm: Number(document.getElementById('t-distance').value),
+    elevationGainM: Number(document.getElementById('t-gain').value),
+    maxAltitudeM: Number(document.getElementById('t-alt').value),
+    priceFromCents: Math.round(Number(document.getElementById('t-price').value) * 100),
+    bestSeason: document.getElementById('t-season').value.trim(),
+    imageUrl: document.getElementById('t-image').value.trim(),
+  };
+  try {
+    let result;
+    if (editingTourId) { delete payload.slug; result = await apiSend('/api/admin/tours/' + editingTourId, 'PATCH', payload); }
+    else result = await apiSend('/api/admin/tours', 'POST', payload);
+    showToast('Tour saved.', 'success');
+    // The server auto-pins a tour's district on the homepage map when it's
+    // new (or new for that district), and removes a pin automatically once
+    // no tour references its district/place anymore — surface both as
+    // toasts so the admin knows the map changed too.
+    if (result && result.map_pin) {
+      showToast(result.map_pin.message, result.map_pin.status === 'pinned' ? 'info' : 'warning');
+    }
+    if (result && result.removed_pins && result.removed_pins.length) {
+      showToast('Removed now-unused map pin' + (result.removed_pins.length > 1 ? 's' : '') + ': ' + result.removed_pins.join(', '), 'info');
+    }
+    resetTourForm(); loadTours(); populateSelectors();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function deleteTour(id){
+  if (!confirm('Delete this tour? This only works if it has no departures.')) return;
+  try {
+    const result = await apiSend('/api/admin/tours/' + id, 'DELETE');
+    showToast('Tour deleted.', 'success');
+    if (result && result.removed_pins && result.removed_pins.length) {
+      showToast('Removed now-unused map pin' + (result.removed_pins.length > 1 ? 's' : '') + ': ' + result.removed_pins.join(', '), 'info');
+    }
+    loadTours(); populateSelectors();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+/* ---------- departures ---------- */
+// Availability status (open/few_spaces/full) is always computed server-side
+// from capacity vs. seats_booked — admins never set it directly, so it can
+// never drift out of sync with actual bookings. Only the departure (start)
+// date and the assigned guide are admin-editable, and only through explicit
+// Edit → Save, never auto-saved on change.
+let departuresCache = [];
+let editingDepartureId = null;
+async function loadDepartures(){
+  // Authenticated (not the bare public fetch) so the admin's own view also
+  // includes is_custom departures — private, auto-created reservations for
+  // a confirmed custom trip (see schema.sql) that never show up publicly.
+  const data = await api('/api/departures');
+  departuresCache = data.departures;
+  editingDepartureId = null;
+  renderDeparturesTable();
+}
+function renderDeparturesTable(){
+  document.querySelector('#all-departures-table tbody').innerHTML = departuresCache.map(renderDepartureRow).join('')
+    || '<tr><td colspan="6" class="empty-note">No departures yet.</td></tr>';
+}
+function renderDepartureRow(d){
+  if (d.id !== editingDepartureId) {
+    return `<tr>
+      <td>${esc(d.tour_name)}${d.is_custom ? '<br><span style="color:var(--glacier); font-size:10px; text-transform:uppercase; letter-spacing:0.03em;">Custom trip</span>' : ''}</td>
+      <td>${esc(d.start_date)} &rarr; ${esc(d.end_date)} <span style="color:var(--dim); font-size:11px;">(${d.duration_days}d)</span></td>
+      <td>${esc(d.guide_name || '—')}</td>
+      <td>${d.seats_booked}/${d.capacity}</td>
+      <td><span class="status-pip"><span class="pip" style="background:${statusColor(d.status)}"></span>${esc(d.status_label || d.status)}</span></td>
+      <td class="row-actions">
+        <button class="small ghost" onclick="startEditDeparture(${d.id})">Edit</button>
+        <button class="small danger" onclick="deleteDeparture(${d.id})">Delete</button>
+      </td>
+    </tr>`;
+  }
+  return `<tr>
+    <td>${esc(d.tour_name)}</td>
+    <td>
+      <input type="date" id="dep-edit-start-${d.id}" value="${esc(d.start_date)}" style="width:140px;" oninput="previewDepartureEditEnd(${d.id})">
+      <div style="font-size:11px; color:var(--dim); margin-top:2px;">&rarr; <span id="dep-edit-end-${d.id}">${esc(d.end_date)}</span> (${d.duration_days}d)</div>
+    </td>
+    <td><select id="dep-edit-guide-${d.id}">
+      <option value="">Unassigned</option>
+      ${guidesCache.map(g => `<option value="${g.id}" ${g.id===d.guide_id?'selected':''}>${esc(g.name)}</option>`).join('')}
+    </select></td>
+    <td>${d.seats_booked}/${d.capacity}</td>
+    <td><span class="status-pip"><span class="pip" style="background:${statusColor(d.status)}"></span>${esc(d.status_label || d.status)}</span></td>
+    <td class="dep-edit-actions">
+      <button class="small" onclick="saveDepartureEdit(${d.id})">Save</button>
+      <button class="small ghost" onclick="cancelDepartureEdit()">Cancel</button>
+    </td>
+  </tr>`;
+}
+function startEditDeparture(id){ editingDepartureId = id; renderDeparturesTable(); }
+function cancelDepartureEdit(){ editingDepartureId = null; renderDeparturesTable(); showToast('Edit cancelled — nothing changed.', 'info'); }
+function previewDepartureEditEnd(id){
+  const d = departuresCache.find(x => x.id === id);
+  const val = document.getElementById('dep-edit-start-' + id).value;
+  if (!d || !val) return;
+  document.getElementById('dep-edit-end-' + id).textContent = computeEndDatePreview(val, d.duration_days);
+}
+async function saveDepartureEdit(id){
+  const startDate = document.getElementById('dep-edit-start-' + id).value;
+  const guideVal = document.getElementById('dep-edit-guide-' + id).value;
+  if (!startDate) { showToast('Pick a start date first.', 'warning'); return; }
+  try {
+    await apiSend('/api/admin/departures/' + id, 'PATCH', { startDate, guideId: guideVal ? Number(guideVal) : null });
+    editingDepartureId = null;
+    showToast('Departure updated.', 'success');
+    loadDepartures();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function addDeparture(){
+  try {
+    await apiSend('/api/admin/departures', 'POST', {
+      tourId: Number(document.getElementById('d-tour').value),
+      guideId: document.getElementById('d-guide').value ? Number(document.getElementById('d-guide').value) : null,
+      capacity: Number(document.getElementById('d-capacity').value),
+      startDate: document.getElementById('d-start').value,
+      status: document.getElementById('d-status').value,
+    });
+    showToast('Departure date added.', 'success');
+    loadDepartures();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function deleteDeparture(id){
+  if (!confirm('Delete this departure? Only works if nobody is booked on it.')) return;
+  try { await apiSend('/api/admin/departures/' + id, 'DELETE'); showToast('Departure deleted.', 'success'); loadDepartures(); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+
+/* ---------- guides ---------- */
+let editingGuideId = null;
+async function loadGuides(){
+  const data = await fetch(API + '/api/guides').then(r => r.json());
+  document.querySelector('#guides-table tbody').innerHTML = data.guides.map(g => `
+    <tr><td>${g.photo_url ? `<img class="thumb" src="${esc(g.photo_url)}">` : '—'}</td>
+    <td>${esc(g.name)}</td><td>${esc(g.role)}</td><td>${g.years_experience}</td>
+    <td class="row-actions"><button class="small ghost" onclick="editGuide(${g.id})">Edit</button>
+        <button class="small danger" onclick="deleteGuide(${g.id})">Delete</button></td></tr>`).join('')
+    || '<tr><td colspan="5" class="empty-note">No guides yet.</td></tr>';
+}
+function resetGuideForm(){
+  editingGuideId = null;
+  document.getElementById('guide-form-title').textContent = 'Add a guide';
+  ['g-name','g-role','g-years','g-languages','g-specialties','g-email','g-password','g-photo','g-bio','g-quals-verified','g-quals-unverified']
+    .forEach(id => document.getElementById(id).value = '');
+}
+async function editGuide(id){
+  const data = await fetch(API + '/api/guides').then(r => r.json());
+  const g = data.guides.find(x => x.id === id);
+  editingGuideId = id;
+  document.getElementById('guide-form-title').textContent = 'Editing: ' + g.name;
+  document.getElementById('g-name').value = g.name;
+  document.getElementById('g-role').value = g.role;
+  document.getElementById('g-years').value = g.years_experience;
+  document.getElementById('g-languages').value = g.languages || '';
+  document.getElementById('g-specialties').value = g.specialties || '';
+  document.getElementById('g-email').value = g.email || '';
+  document.getElementById('g-photo').value = g.photo_url || '';
+  document.getElementById('g-bio').value = g.bio || '';
+  const quals = g.qualifications || [];
+  document.getElementById('g-quals-verified').value = quals.filter(q => q.verified).map(q => q.title).join('\n');
+  document.getElementById('g-quals-unverified').value = quals.filter(q => !q.verified).map(q => q.title).join('\n');
+  window.scrollTo({ top:0, behavior:'smooth' });
+}
+async function saveGuide(){
+  const verified = linesToArray(document.getElementById('g-quals-verified').value).map(title => ({ title, verified: true }));
+  const unverified = linesToArray(document.getElementById('g-quals-unverified').value).map(title => ({ title, verified: false }));
+  const payload = {
+    name: document.getElementById('g-name').value.trim(),
+    role: document.getElementById('g-role').value.trim(),
+    yearsExperience: Number(document.getElementById('g-years').value) || 0,
+    languages: document.getElementById('g-languages').value.trim(),
+    specialties: document.getElementById('g-specialties').value.trim(),
+    email: document.getElementById('g-email').value.trim(),
+    photoUrl: document.getElementById('g-photo').value.trim(),
+    bio: document.getElementById('g-bio').value.trim(),
+    qualifications: [...verified, ...unverified],
+  };
+  const pw = document.getElementById('g-password').value;
+  if (pw) payload.password = pw;
+  try {
+    if (editingGuideId) await apiSend('/api/admin/guides/' + editingGuideId, 'PATCH', payload);
+    else await apiSend('/api/admin/guides', 'POST', payload);
+    showToast('Guide saved.', 'success');
+    resetGuideForm(); loadGuides(); populateSelectors();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function deleteGuide(id){
+  if (!confirm('Delete this guide?')) return;
+  try { await apiSend('/api/admin/guides/' + id, 'DELETE'); showToast('Guide deleted.', 'success'); loadGuides(); populateSelectors(); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+
+/* ---------- gallery ---------- */
+let galleryCache = [];
+let editingImageId = null;
+// Set by the Tours tab's "Photos" button so this panel opens pre-scoped to
+// one tour's photos instead of the full, unsorted list of every image on
+// the site — the tour-detail page's gallery section (category='tour',
+// tour_id=this) is exactly what this filter shows.
+let tourPhotoFilter = null;
+async function loadGallery(){
+  const data = await fetch(API + '/api/gallery').then(r => r.json());
+  galleryCache = data.images;
+  editingImageId = null;
+  renderGalleryTable();
+}
+function tourNameForId(id){
+  const t = toursCache.find(x => x.id === id);
+  return t ? t.name : '—';
+}
+function manageTourPhotos(id){
+  tourPhotoFilter = id;
+  document.getElementById('gallery-filter-name').textContent = tourNameForId(id);
+  document.getElementById('gallery-filter-banner').classList.remove('hidden');
+  document.getElementById('img-category').value = 'tour';
+  document.getElementById('img-tour').value = id;
+  showTab('gallery');
+  loadGallery(); // showTab no-ops if already on the gallery tab — force a refresh either way
+}
+function clearGalleryFilter(){
+  tourPhotoFilter = null;
+  document.getElementById('gallery-filter-banner').classList.add('hidden');
+  document.getElementById('img-category').value = 'gallery';
+  document.getElementById('img-tour').value = '';
+  renderGalleryTable();
+}
+function renderGalleryTable(){
+  const rows = tourPhotoFilter ? galleryCache.filter(im => im.tour_id === tourPhotoFilter) : galleryCache;
+  document.querySelector('#gallery-table tbody').innerHTML = rows.map(renderGalleryRow).join('')
+    || (tourPhotoFilter ? '<tr><td colspan="5" class="empty-note">No photos linked to this tour yet — add one above (it’s already set to category "tour" and this tour).</td></tr>'
+                         : '<tr><td colspan="5" class="empty-note">No images yet.</td></tr>');
+}
+function renderGalleryRow(im){
+  if (im.id !== editingImageId) {
+    return `<tr><td><img class="thumb" src="${esc(im.image_url)}"></td><td>${esc(im.caption || '—')}</td><td>${esc(im.category)}</td>
+    <td>${im.tour_id ? esc(tourNameForId(im.tour_id)) : '—'}</td>
+    <td class="row-actions"><button class="small ghost" onclick="startEditImage(${im.id})">Edit</button>
+        <button class="small danger" onclick="deleteImage(${im.id})">Delete</button></td></tr>`;
+  }
+  return `<tr><td><img class="thumb" src="${esc(im.image_url)}"></td>
+    <td><input id="img-edit-caption-${im.id}" value="${esc(im.caption || '')}" style="width:100%;"></td>
+    <td><select id="img-edit-category-${im.id}">
+      ${['gallery','hero','tour','guide'].map(c => `<option value="${c}" ${c===im.category?'selected':''}>${c}</option>`).join('')}
+    </select></td>
+    <td><select id="img-edit-tour-${im.id}">
+      <option value="">None</option>
+      ${toursCache.map(t => `<option value="${t.id}" ${t.id===im.tour_id?'selected':''}>${esc(t.name)}</option>`).join('')}
+    </select></td>
+    <td class="dep-edit-actions">
+      <button class="small" onclick="saveImageEdit(${im.id})">Save</button>
+      <button class="small ghost" onclick="cancelImageEdit()">Cancel</button>
+    </td></tr>`;
+}
+function startEditImage(id){ editingImageId = id; renderGalleryTable(); }
+function cancelImageEdit(){ editingImageId = null; renderGalleryTable(); }
+async function saveImageEdit(id){
+  try {
+    await apiSend('/api/admin/gallery/' + id, 'PATCH', {
+      caption: document.getElementById('img-edit-caption-' + id).value.trim(),
+      category: document.getElementById('img-edit-category-' + id).value,
+      tourId: document.getElementById('img-edit-tour-' + id).value ? Number(document.getElementById('img-edit-tour-' + id).value) : null,
+    });
+    showToast('Image updated.', 'success');
+    loadGallery();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function addImage(){
+  try {
+    await apiSend('/api/admin/gallery', 'POST', {
+      imageUrl: document.getElementById('img-url').value.trim(),
+      caption: document.getElementById('img-caption').value.trim(),
+      category: document.getElementById('img-category').value,
+      tourId: document.getElementById('img-tour').value ? Number(document.getElementById('img-tour').value) : null,
+    });
+    showToast('Image added.', 'success');
+    ['img-url','img-caption'].forEach(id => document.getElementById(id).value = '');
+    loadGallery();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function deleteImage(id){
+  if (!confirm('Delete this image?')) return;
+  try { await apiSend('/api/admin/gallery/' + id, 'DELETE'); showToast('Image deleted.', 'success'); loadGallery(); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+
+/* ---------- destinations ---------- */
+// A destination auto-created for an unrecognised tour region has no lat/lng
+// yet (see ensureDestinationForRegion in routes/admin.js) — Edit here lets
+// an admin fill those in so it actually gets a pin on the homepage map.
+let destinationsCache = [];
+let editingDestinationId = null;
+async function loadDestinations(){
+  const data = await fetch(API + '/api/destinations').then(r => r.json());
+  destinationsCache = data.destinations;
+  editingDestinationId = null;
+  renderDestinationsTable();
+}
+function renderDestinationsTable(){
+  document.querySelector('#destinations-table tbody').innerHTML = destinationsCache.map(renderDestinationRow).join('')
+    || '<tr><td colspan="4" class="empty-note">No destinations yet.</td></tr>';
+}
+function renderDestinationRow(d){
+  const needsCoords = d.lat == null || d.lng == null;
+  if (d.id !== editingDestinationId) {
+    return `<tr>
+      <td>${esc(d.name)}</td><td>${esc(d.region || '—')}</td>
+      <td>${needsCoords ? '<span style="color:var(--amber);">Needs coordinates — no pin yet</span>' : esc(d.lat) + ', ' + esc(d.lng)}</td>
+      <td class="row-actions">
+        <button class="small ghost" onclick="startEditDestination(${d.id})">Edit</button>
+        <button class="small danger" onclick="deleteDestination(${d.id})">Delete</button>
+      </td>
+    </tr>`;
+  }
+  return `<tr>
+    <td>${esc(d.name)}</td><td>${esc(d.region || '—')}</td>
+    <td>
+      <input type="number" step="0.0001" id="dest-edit-lat-${d.id}" placeholder="Latitude" value="${d.lat ?? ''}" style="width:100px; display:inline-block; margin-right:4px;">
+      <input type="number" step="0.0001" id="dest-edit-lng-${d.id}" placeholder="Longitude" value="${d.lng ?? ''}" style="width:100px; display:inline-block;">
+    </td>
+    <td class="dep-edit-actions">
+      <button class="small" onclick="saveDestinationEdit(${d.id})">Save</button>
+      <button class="small ghost" onclick="cancelDestinationEdit()">Cancel</button>
+    </td>
+  </tr>`;
+}
+function startEditDestination(id){ editingDestinationId = id; renderDestinationsTable(); }
+function cancelDestinationEdit(){ editingDestinationId = null; renderDestinationsTable(); }
+async function saveDestinationEdit(id){
+  const lat = document.getElementById('dest-edit-lat-' + id).value;
+  const lng = document.getElementById('dest-edit-lng-' + id).value;
+  if (lat === '' || lng === '') { showToast('Enter both latitude and longitude.', 'warning'); return; }
+  try {
+    await apiSend('/api/admin/destinations/' + id, 'PATCH', { lat: Number(lat), lng: Number(lng) });
+    editingDestinationId = null;
+    showToast('Coordinates saved — pin added to the map.', 'success');
+    loadDestinations();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function addDestination(){
+  try {
+    await apiSend('/api/admin/destinations', 'POST', {
+      slug: document.getElementById('dest-slug').value.trim(),
+      name: document.getElementById('dest-name').value.trim(),
+      region: document.getElementById('dest-region').value.trim(),
+      lat: Number(document.getElementById('dest-lat').value),
+      lng: Number(document.getElementById('dest-lng').value),
+      heroImageUrl: document.getElementById('dest-image').value.trim(),
+      description: document.getElementById('dest-desc').value.trim(),
+    });
+    showToast('Destination added.', 'success');
+    ['dest-slug','dest-name','dest-region','dest-lat','dest-lng','dest-image','dest-desc'].forEach(id => document.getElementById(id).value = '');
+    loadDestinations();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function deleteDestination(id){
+  if (!confirm('Delete this destination?')) return;
+  try { await apiSend('/api/admin/destinations/' + id, 'DELETE'); showToast('Destination deleted.', 'success'); loadDestinations(); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+
+/* ---------- CRM ---------- */
+// No terminal state ('completed'/'declined'/'cancelled') offers further
+// quick actions — nothing legitimate left to do to a request once it's here.
+const CRM_TERMINAL_STATUSES = ['completed', 'declined', 'cancelled'];
+let crmCache = [];
+const PROPOSAL_STATUS_COLOR = {
+  draft:'var(--dim)', sent:'var(--glacier)', approved:'var(--green)', declined:'var(--red)',
+  changes_requested:'var(--amber)', expired:'var(--red)', withdrawn:'var(--red)', superseded:'var(--dim)',
+};
+const CRM_STATUS_COLOR = {
+  new:'var(--dim)', contacted:'var(--glacier)', proposal_sent:'var(--glacier)', approved:'var(--amber)',
+  deposit:'var(--amber)', confirmed:'var(--green)', completed:'var(--green)', declined:'var(--red)', cancelled:'var(--red)',
+};
+async function loadCrm(){
+  const crm = await api('/api/admin/custom-requests');
+  crmCache = crm.requests;
+  document.querySelector('#crm-table tbody').innerHTML = crm.requests.map(r => {
+    const p = r.active_proposal;
+    const proposalCell = p
+      ? `v${p.version} <span class="pip" style="background:${PROPOSAL_STATUS_COLOR[p.status] || 'var(--dim)'}"></span>${esc(p.status.replace('_',' '))}<br><span style="color:var(--dim); font-size:11px;">${money(p.price_cents)}</span>`
+      : '<span style="color:var(--dim);">No proposal yet</span>';
+    const bookingHint = r.booking_reference
+      ? `<br><span style="color:var(--green); font-size:10.5px;">&#10003; Booked ${esc(r.booking_reference)}</span>` : '';
+    // Status is READ-ONLY here on purpose — it's not an admin opinion to set,
+    // it's a live reflection of what the customer and the proposal actually
+    // did (sent/approved/declined/paid, all driven from routes/proposals.js).
+    // The only manual actions ever offered are ones nothing else triggers:
+    // marking a brand-new lead "contacted", marking an actually-traveled
+    // confirmed trip "completed", or cancelling outright.
+    const statusCell = `<span class="pip" style="background:${CRM_STATUS_COLOR[r.status] || 'var(--dim)'}"></span>${esc(r.status.replace('_',' '))}`;
+    const actions = [`<button class="small" onclick="location.href='custom-request.html?id=${r.id}'">Proposal</button>`,
+      `<button class="small ghost" onclick="openHistoryModal(${r.id})">History</button>`];
+    if (r.status === 'new') actions.push(`<button class="small" onclick="markCrmContacted(${r.id})">Mark contacted</button>`);
+    if (r.status === 'confirmed' && r.booking_id) actions.push(`<button class="small" onclick="markCrmCompleted(${r.id})">Mark completed</button>`);
+    // Once a real booking exists, this row's cancellation has to go through
+    // the Bookings tab instead (computes a proper refund, releases seats) —
+    // see the guard on POST /api/custom-requests/:id/cancel.
+    if (!CRM_TERMINAL_STATUSES.includes(r.status) && !r.booking_id) actions.push(`<button class="small danger" onclick="cancelCrmRequest(${r.id})">Cancel</button>`);
+    return `
+    <tr><td>${esc(r.rider_name || r.name || '—')}<br><span style="color:var(--dim); font-size:11px;">${esc(r.rider_email || r.email)}</span>
+      ${r.rider_id ? '<br><span style="color:var(--green); font-size:10px;">Registered account</span>' : '<br><span style="color:var(--dim); font-size:10px;">Guest</span>'}</td>
+    <td>${r.based_on_tour ? `<a href="${FRONTEND}/tour-detail.html?slug=${encodeURIComponent(r.based_on_tour.slug)}" target="_blank" rel="noopener">${esc(r.based_on_tour.name)}</a>` : esc(r.destination || '—')}
+      ${r.preferred_date ? `<br><span style="color:var(--dim); font-size:11px;">Preferred: ${esc(r.preferred_date)}</span>` : ''}</td>
+    <td>${esc(r.duration_bucket || '—')}</td><td>${esc(r.riding_style || '—')}</td><td>${esc(r.budget || '—')}</td>
+    <td>${statusCell}</td>
+    <td style="font-size:12px;">${proposalCell}${bookingHint}</td>
+    <td class="row-actions">${actions.join('')}</td></tr>`;
+  }).join('')
+    || '<tr><td colspan="8" class="empty-note">No requests yet — submit one from build-adventure.html.</td></tr>';
+}
+async function markCrmContacted(id){
+  try { await apiSend('/api/admin/custom-requests/' + id, 'PATCH', { status: 'contacted' }); showToast('Marked contacted.', 'success'); loadCrm(); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+async function markCrmCompleted(id){
+  try { await apiSend('/api/admin/custom-requests/' + id, 'PATCH', { status: 'completed' }); showToast('Marked completed.', 'success'); loadCrm(); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+async function cancelCrmRequest(id){
+  if (!confirm('Cancel this request? This cannot be undone from here.')) return;
+  try { await apiSend('/api/custom-requests/' + id + '/cancel', 'POST', {}); showToast('Request cancelled.', 'success'); loadCrm(); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+
+/* ---------- audit history modal (read-only) ---------- */
+function ensureHistoryModal(){
+  if (document.getElementById('history-overlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'history-overlay';
+  overlay.className = 'hidden';
+  overlay.style.cssText = 'position:fixed; inset:0; background:rgba(21,20,15,0.88); backdrop-filter:blur(2px); z-index:500; display:flex; align-items:center; justify-content:center; padding:20px;';
+  overlay.innerHTML = `
+    <div style="width:100%; max-width:560px; max-height:80vh; overflow-y:auto; background:linear-gradient(160deg, var(--stone), var(--ink-soft)); border:1px solid var(--line); padding:26px; border-radius:10px; box-shadow:0 20px 60px -18px rgba(0,0,0,0.7);">
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:14px;">
+        <h3 style="font-size:16px; margin:0; text-transform:none;">Audit trail</h3>
+        <button class="ghost small" onclick="document.getElementById('history-overlay').classList.add('hidden')">Close</button>
+      </div>
+      <div id="history-list" style="display:flex; flex-direction:column; gap:8px; font-size:12.5px;"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.add('hidden'); });
+}
+async function openHistoryModal(requestId){
+  ensureHistoryModal();
+  const overlay = document.getElementById('history-overlay');
+  overlay.classList.remove('hidden');
+  const list = document.getElementById('history-list');
+  list.innerHTML = 'Loading…';
+  try {
+    const data = await api('/api/admin/custom-requests/' + requestId + '/events');
+    list.innerHTML = data.events.length ? data.events.map(e => `
+      <div style="border-left:2px solid var(--line); padding-left:10px;">
+        <div><b>${esc(e.event_type.replace(/_/g,' '))}</b> ${e.from_status || e.to_status ? `&mdash; ${esc(e.from_status||'?')} &rarr; ${esc(e.to_status||'?')}` : ''}</div>
+        <div style="color:var(--dim);">${esc(e.actor_type)}${e.actor_id ? ' #' + e.actor_id : ''} &middot; ${esc(e.created_at)}</div>
+        ${e.message ? `<div style="margin-top:2px;">${esc(e.message)}</div>` : ''}
+      </div>`).join('') : '<p class="empty-note">No events recorded.</p>';
+  } catch (e) { list.innerHTML = esc(e.message); }
+}
+
+/* ---------- notifications ---------- */
+let notifCache = [];
+async function loadNotifications(){
+  try {
+    const data = await api('/api/admin/notifications');
+    notifCache = data.notifications;
+    const badge = document.getElementById('notif-badge');
+    if (data.unread_count > 0) { badge.textContent = data.unread_count; badge.classList.remove('hidden'); }
+    else badge.classList.add('hidden');
+    document.getElementById('notif-list').innerHTML = notifCache.length
+      ? notifCache.map(n => `
+        <div style="padding:8px 10px; border-radius:6px; background:${n.read_at ? 'transparent' : 'rgba(255,78,31,0.08)'}; cursor:pointer;" onclick="markNotificationRead(${n.id})">
+          <div style="font-size:12px; font-weight:700;">${esc(n.title)}</div>
+          ${n.body ? `<div style="font-size:11.5px; color:var(--dim); margin-top:2px;">${esc(n.body)}</div>` : ''}
+          <div style="font-size:10px; color:var(--dim); margin-top:3px;">${esc(n.created_at)}</div>
+        </div>`).join('')
+      : '<p class="empty-note" style="margin:0;">No notifications yet.</p>';
+  } catch (e) { /* best-effort — don't block the panel on a failed fetch */ }
+}
+function toggleNotifications(){
+  document.getElementById('account-menu').classList.add('hidden');
+  const panel = document.getElementById('notif-panel');
+  const willOpen = panel.classList.contains('hidden');
+  panel.classList.toggle('hidden');
+  if (willOpen) loadNotifications();
+}
+function toggleAccountMenu(){
+  document.getElementById('notif-panel').classList.add('hidden');
+  document.getElementById('account-menu').classList.toggle('hidden');
+}
+// Closes either topbar dropdown when clicking anywhere outside it.
+document.addEventListener('click', e => {
+  if (!e.target.closest('#notif-btn') && !e.target.closest('#notif-panel')) document.getElementById('notif-panel').classList.add('hidden');
+  if (!e.target.closest('#avatar-btn') && !e.target.closest('#account-menu')) document.getElementById('account-menu').classList.add('hidden');
+});
+// Purely a sidebar convenience — filters the nav list by label text, same
+// tabs and showTab() calls as before, nothing about a tab's own behavior
+// changes.
+document.getElementById('topbar-search').addEventListener('input', e => {
+  const q = e.target.value.trim().toLowerCase();
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.classList.toggle('hidden', q.length > 0 && !btn.textContent.toLowerCase().includes(q));
+  });
+});
+async function markNotificationRead(id){
+  try { await apiSend('/api/admin/notifications/' + id + '/read', 'POST'); loadNotifications(); } catch { /* best-effort */ }
+}
+async function markAllNotificationsRead(){
+  try { await apiSend('/api/admin/notifications/read-all', 'POST'); loadNotifications(); } catch { /* best-effort */ }
+}
+
+/* ---------- bookings ---------- */
+const BOOKING_LOCKED_STATUSES = ['completed', 'cancelled'];
+async function loadBookings(){
+  const bookings = await api('/api/admin/bookings');
+  document.querySelector('#bookings-table tbody').innerHTML = bookings.bookings.map(b => {
+    const addonsLabel = b.addon_items.length ? b.addon_items.map(a => esc(a.label)).join(', ') : '&mdash;';
+    const discountLabel = b.discount_cents > 0 ? `<br><span style="color:#7FBF6B; font-size:11px;">&minus;${money(b.discount_cents)} promo</span>` : '';
+    return `
+    <tr><td style="font-family:monospace; font-size:12px;">${esc(b.booking_reference)}</td>
+    <td>${b.requester_name ? esc(b.requester_name) + '<br><span style="color:var(--dim); font-size:11px;">' + esc(b.requester_email) + '</span>' : '<span style="color:var(--dim);">Deleted account</span>'}</td>
+    <td>${esc(b.tour_name)}</td><td>${esc(b.start_date)}</td><td>${b.riders.length}</td>
+    <td style="font-size:12px;">${addonsLabel}${discountLabel}</td>
+    <td>${money(b.amount_paid_cents)} / ${money(b.total_cents)}</td>
+    <td><span class="pip" style="background:${bookingStatusColor(b.status)}"></span>${esc(b.status)}</td>
+    <td class="row-actions">${BOOKING_LOCKED_STATUSES.includes(b.status) ? '' : `
+      <button class="small" onclick="recordPayment(${b.id}, ${b.total_cents - b.amount_paid_cents})">Record payment</button>
+      <button class="small danger" onclick="cancelBooking(${b.id})">Cancel</button>`}</td></tr>`;
+  }).join('')
+    || '<tr><td colspan="9" class="empty-note">No bookings yet.</td></tr>';
+}
+async function recordPayment(id, remainingCents){
+  const suggestion = (remainingCents / 100).toFixed(2);
+  const input = prompt('Amount received, in EUR (remaining balance: €' + suggestion + '):', suggestion);
+  if (!input) return;
+  const amountCents = Math.round(Number(input) * 100);
+  if (!(amountCents > 0)) { showToast('Enter a positive amount.', 'warning'); return; }
+  try { await apiSend('/api/bookings/' + id + '/payment', 'PATCH', { amountCents }); showToast('Payment recorded.', 'success'); loadBookings(); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+async function cancelBooking(id){
+  if (!confirm('Cancel this booking and release its seats?')) return;
+  try { await apiSend('/api/bookings/' + id + '/cancel', 'POST'); showToast('Booking cancelled.', 'success'); loadBookings(); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+
+/* ---------- add-ons ---------- */
+let editingAddonId = null;
+let addonsCache = [];
+async function loadAddons(){
+  const data = await api('/api/admin/addons');
+  addonsCache = data.addons;
+  document.querySelector('#addons-table tbody').innerHTML = addonsCache.map(a => `
+    <tr><td style="font-family:monospace; font-size:12px;">${esc(a.key)}</td><td>${esc(a.label)}</td>
+    <td>${money(a.price_cents)}</td><td>${a.unit === 'per_booking' ? 'Per booking' : 'Per rider'}</td>
+    <td>${a.active ? 'Yes' : '<span style="color:var(--dim);">No</span>'}</td>
+    <td class="row-actions"><button class="small ghost" onclick="editAddon(${a.id})">Edit</button>
+        <button class="small danger" onclick="deleteAddon(${a.id})">Delete</button></td></tr>`).join('')
+    || '<tr><td colspan="6" class="empty-note">No add-ons yet.</td></tr>';
+}
+function resetAddonForm(){
+  editingAddonId = null;
+  document.getElementById('addon-form-title').textContent = 'Add a new add-on';
+  ['ad-key','ad-label','ad-price','ad-desc'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('ad-key').disabled = false;
+  document.getElementById('ad-unit').value = 'per_rider';
+  document.getElementById('ad-active').value = 'true';
+}
+function editAddon(id){
+  const a = addonsCache.find(x => x.id === id);
+  if (!a) return;
+  editingAddonId = id;
+  document.getElementById('addon-form-title').textContent = 'Editing: ' + a.label;
+  document.getElementById('ad-key').value = a.key; document.getElementById('ad-key').disabled = true;
+  document.getElementById('ad-label').value = a.label;
+  document.getElementById('ad-price').value = (a.price_cents / 100).toFixed(2);
+  document.getElementById('ad-unit').value = a.unit;
+  document.getElementById('ad-desc').value = a.description || '';
+  document.getElementById('ad-active').value = a.active ? 'true' : 'false';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+async function saveAddon(){
+  const payload = {
+    label: document.getElementById('ad-label').value.trim(),
+    priceCents: Math.round(Number(document.getElementById('ad-price').value) * 100),
+    unit: document.getElementById('ad-unit').value,
+    description: document.getElementById('ad-desc').value.trim(),
+    active: document.getElementById('ad-active').value === 'true',
+  };
+  try {
+    if (editingAddonId) await apiSend('/api/admin/addons/' + editingAddonId, 'PATCH', payload);
+    else await apiSend('/api/admin/addons', 'POST', { ...payload, key: document.getElementById('ad-key').value.trim() });
+    showToast('Add-on saved.', 'success');
+    resetAddonForm(); loadAddons();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function deleteAddon(id){
+  if (!confirm('Delete this add-on? Only works if it has never been used on a booking.')) return;
+  try { await apiSend('/api/admin/addons/' + id, 'DELETE'); showToast('Add-on deleted.', 'success'); loadAddons(); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+
+/* ---------- promo codes ---------- */
+let editingPromoId = null;
+async function loadPromos(){
+  const data = await api('/api/admin/promo-codes');
+  document.querySelector('#promos-table tbody').innerHTML = data.promo_codes.map(p => {
+    const discount = p.discount_type === 'percent' ? p.discount_value + '%' : money(p.discount_value);
+    const restrictions = [p.tour_name ? esc(p.tour_name) + ' only' : null, p.min_riders ? p.min_riders + '+ riders' : null].filter(Boolean).join(', ') || '&mdash;';
+    const valid = [p.valid_from, p.valid_until].some(Boolean) ? esc(p.valid_from || '…') + ' &rarr; ' + esc(p.valid_until || '…') : 'Always';
+    return `<tr><td style="font-family:monospace;">${esc(p.code)}</td><td>${discount}</td>
+      <td>${p.used_count}${p.max_uses ? ' / ' + p.max_uses : ''}</td><td style="font-size:12px;">${restrictions}</td>
+      <td style="font-size:12px;">${valid}</td><td>${p.active ? 'Yes' : '<span style="color:var(--dim);">No</span>'}</td>
+      <td class="row-actions"><button class="small ghost" onclick="editPromo(${p.id})">Edit</button>
+        <button class="small danger" onclick="deletePromo(${p.id})">Delete</button></td></tr>`;
+  }).join('') || '<tr><td colspan="7" class="empty-note">No promo codes yet.</td></tr>';
+  promosCache = data.promo_codes;
+  document.getElementById('pr-tour').innerHTML = '<option value="">Any tour</option>' + toursCache.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+}
+let promosCache = [];
+function resetPromoForm(){
+  editingPromoId = null;
+  document.getElementById('promo-form-title').textContent = 'Add a new promo code';
+  ['pr-code','pr-desc','pr-value','pr-max-uses','pr-min-riders','pr-from','pr-until'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('pr-code').disabled = false;
+  document.getElementById('pr-type').value = 'percent';
+  document.getElementById('pr-tour').value = '';
+  document.getElementById('pr-active').value = 'true';
+}
+function editPromo(id){
+  const p = promosCache.find(x => x.id === id);
+  if (!p) return;
+  editingPromoId = id;
+  document.getElementById('promo-form-title').textContent = 'Editing: ' + p.code;
+  document.getElementById('pr-code').value = p.code; document.getElementById('pr-code').disabled = true;
+  document.getElementById('pr-desc').value = p.description || '';
+  document.getElementById('pr-type').value = p.discount_type;
+  document.getElementById('pr-value').value = p.discount_type === 'percent' ? p.discount_value : (p.discount_value / 100).toFixed(2);
+  document.getElementById('pr-max-uses').value = p.max_uses ?? '';
+  document.getElementById('pr-min-riders').value = p.min_riders ?? '';
+  document.getElementById('pr-tour').value = p.tour_id ?? '';
+  document.getElementById('pr-from').value = (p.valid_from || '').slice(0, 10);
+  document.getElementById('pr-until').value = (p.valid_until || '').slice(0, 10);
+  document.getElementById('pr-active').value = p.active ? 'true' : 'false';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+async function savePromo(){
+  const type = document.getElementById('pr-type').value;
+  const rawValue = Number(document.getElementById('pr-value').value);
+  const payload = {
+    description: document.getElementById('pr-desc').value.trim(),
+    discountType: type,
+    discountValue: type === 'percent' ? rawValue : Math.round(rawValue * 100),
+    maxUses: document.getElementById('pr-max-uses').value ? Number(document.getElementById('pr-max-uses').value) : null,
+    minRiders: document.getElementById('pr-min-riders').value ? Number(document.getElementById('pr-min-riders').value) : null,
+    tourId: document.getElementById('pr-tour').value ? Number(document.getElementById('pr-tour').value) : null,
+    validFrom: document.getElementById('pr-from').value || null,
+    validUntil: document.getElementById('pr-until').value || null,
+    active: document.getElementById('pr-active').value === 'true',
+  };
+  try {
+    if (editingPromoId) await apiSend('/api/admin/promo-codes/' + editingPromoId, 'PATCH', payload);
+    else await apiSend('/api/admin/promo-codes', 'POST', { ...payload, code: document.getElementById('pr-code').value.trim() });
+    showToast('Promo code saved.', 'success');
+    resetPromoForm(); loadPromos();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function deletePromo(id){
+  if (!confirm('Delete this promo code? Only works if it has never been used.')) return;
+  try { await apiSend('/api/admin/promo-codes/' + id, 'DELETE'); showToast('Promo code deleted.', 'success'); loadPromos(); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+
+/* ---------- refunds + cancellation rules ---------- */
+async function loadRefunds(){
+  const data = await api('/api/admin/refunds');
+  document.querySelector('#refunds-table tbody').innerHTML = data.refunds.map(r => `
+    <tr><td>${r.rider_name ? esc(r.rider_name) : '<span style="color:var(--dim);">Deleted account</span>'}</td>
+    <td>${esc(r.tour_name)}</td><td>${money(r.amount_cents)} <span style="color:var(--dim); font-size:11px;">(${r.refund_percent}%)</span></td>
+    <td style="max-width:260px; font-size:12px;">${esc(r.reason || '')}</td>
+    <td style="font-size:12px;">${esc((r.requested_at || '').slice(0, 10))}</td>
+    <td><span class="pip" style="background:${r.status === 'processed' ? 'var(--green,#7FBF6B)' : r.status === 'denied' ? 'var(--red,#D9534F)' : 'var(--amber,#E8B33D)'}"></span>${esc(r.status)}</td>
+    <td class="row-actions">${r.status === 'pending' ? `
+      <button class="small" onclick="processRefund(${r.id})">Mark processed</button>
+      <button class="small danger" onclick="denyRefund(${r.id})">Deny</button>` : ''}</td></tr>`).join('')
+    || '<tr><td colspan="7" class="empty-note">No refund requests yet.</td></tr>';
+  loadCancellationRules();
+}
+async function processRefund(id){
+  const password = prompt('Confirm the money has actually been sent back to the rider.\n\nEnter your own admin password to confirm:');
+  if (!password) return;
+  try {
+    await apiSend('/api/admin/refunds/' + id, 'PATCH', { status: 'processed', password });
+    showToast('Refund marked processed.', 'success');
+    loadRefunds();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function denyRefund(id){
+  const adminNotes = prompt('Reason for denying this refund (optional):') || '';
+  try { await apiSend('/api/admin/refunds/' + id, 'PATCH', { status: 'denied', adminNotes }); showToast('Refund denied.', 'success'); loadRefunds(); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+async function loadCancellationRules(){
+  const data = await api('/api/admin/cancellation-rules');
+  document.querySelector('#cancellation-rules-table tbody').innerHTML = data.rules.map(r => `
+    <tr><td>${r.min_days_before_departure}+ days</td><td>${r.refund_percent}%</td>
+    <td class="row-actions"><button class="small danger" onclick="deleteCancellationRule(${r.id})">Delete</button></td></tr>`).join('')
+    || '<tr><td colspan="3" class="empty-note">No tiers configured &mdash; every cancellation refunds 0%.</td></tr>';
+}
+async function addCancellationRule(){
+  const minDaysBeforeDeparture = Number(document.getElementById('cr-days').value);
+  const refundPercent = Number(document.getElementById('cr-percent').value);
+  try {
+    await apiSend('/api/admin/cancellation-rules', 'POST', { minDaysBeforeDeparture, refundPercent });
+    showToast('Tier added.', 'success');
+    document.getElementById('cr-days').value = ''; document.getElementById('cr-percent').value = '';
+    loadCancellationRules();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+async function deleteCancellationRule(id){
+  if (!confirm('Delete this refund tier?')) return;
+  try { await apiSend('/api/admin/cancellation-rules/' + id, 'DELETE'); showToast('Tier removed.', 'success'); loadCancellationRules(); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+
+/* ---------- reviews ---------- */
+const SCORE_FIELDS = [
+  ['riding_score','Riding'], ['guide_score','Guide'], ['scenery_score','Scenery'],
+  ['organization_score','Org'], ['accommodation_score','Accom'],
+];
+function scoreSummary(r){
+  return SCORE_FIELDS.filter(([f]) => r[f] != null).map(([f, label]) => label + ' ' + r[f]).join(' &middot; ') || '&mdash;';
+}
+async function loadReviews(){
+  const data = await api('/api/admin/reviews');
+  document.querySelector('#reviews-table tbody').innerHTML = data.reviews.map(r => `
+    <tr><td>${r.tour_name ? esc(r.tour_name) : '<span style="color:var(--dim);">Deleted tour</span>'}</td>
+    <td>${esc(r.rider_name)}${r.rider_id ? '' : '<br><span style="color:var(--dim); font-size:10px;">No linked account</span>'}</td>
+    <td style="font-size:11.5px; color:var(--dim); white-space:nowrap;">${scoreSummary(r)}</td>
+    <td style="max-width:280px;">${r.quote ? esc(r.quote) : '<span style="color:var(--dim);">&mdash;</span>'}</td>
+    <td style="white-space:nowrap;">${esc((r.created_at || '').slice(0, 10))}</td>
+    <td><button class="small danger" onclick="deleteReview(${r.id})">Remove</button></td></tr>`).join('')
+    || '<tr><td colspan="6" class="empty-note">No reviews yet.</td></tr>';
+}
+async function deleteReview(id){
+  if (!confirm('Remove this review? This can\'t be undone.')) return;
+  try { await apiSend('/api/admin/reviews/' + id, 'DELETE'); showToast('Review removed.', 'success'); loadReviews(); }
+  catch (e) { showToast(e.message, 'error'); }
+}
+
+/* ---------- users (rider accounts) ---------- */
+async function loadUsers(){
+  const data = await api('/api/admin/riders');
+  document.querySelector('#users-table tbody').innerHTML = data.riders.map(u => `
+    <tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${esc(u.country || '—')}</td>
+    <td>${esc((u.created_at || '').slice(0, 10))}</td><td>${u.booking_count}</td><td>${u.request_count}</td>
+    <td><button class="small danger" data-name="${esc(u.name)}" onclick="deleteUser(${u.id}, this)">Delete</button></td></tr>`).join('')
+    || '<tr><td colspan="7" class="empty-note">No registered users yet.</td></tr>';
+}
+function deleteUser(id, btn){
+  const name = btn.dataset.name;
+  openConfirmPassword(
+    'Delete user: ' + name,
+    'This permanently removes their account. Their past bookings and requests are kept for records but unlinked from the account. Enter your admin password to confirm.',
+    async (password) => {
+      await apiSend('/api/admin/riders/' + id, 'DELETE', { password });
+      showToast('User deleted.', 'success');
+      loadUsers();
+    }
+  );
+}
+
+/* ---------- alerts ---------- */
+async function loadAlerts(){
+  const alerts = await api('/api/emergency?status=open');
+  document.getElementById('alerts').innerHTML = alerts.alerts.length ? alerts.alerts.map(a => `
+    <div style="background:#2A1712; border:1px solid var(--red); padding:16px; margin-bottom:10px; font-size:13px; border-radius:8px; box-shadow:0 8px 20px -10px rgba(217,83,79,0.4);">
+      <b>${esc(a.tour_name)}</b> — ${a.lat.toFixed(4)}, ${a.lng.toFixed(4)} · ${a.altitude_m ?? '—'}m
+      <div style="color:var(--dim); font-size:12px; margin:6px 0;">${esc(a.message || 'No message')}</div>
+      <button class="small" onclick="resolveAlert(${a.id})">Mark resolved</button>
+    </div>`).join('') : '<p class="empty-note">No open alerts. Trigger one from tracker.html to test the flow.</p>';
+}
+async function resolveAlert(id){
+  try {
+    await apiSend('/api/emergency/' + id, 'PATCH', { status: 'resolved', responder: getAdminName() || 'ops-dashboard' });
+    showToast('Alert marked resolved.', 'success');
+    loadAlerts();
+  } catch (e) { showToast(e.message, 'error'); }
+}
+
+if (getToken()) boot();
+</script>
+</body>
+</html>

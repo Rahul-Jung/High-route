@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build Your Adventure | High Route MTB Nepal</title>
+<meta name="description" content="Tell us how you ride and we'll design a Nepal mountain-bike adventure around it. Answer seven quick questions and a guide proposes your itinerary.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="logo"><span class="mark">◆</span> HIGH ROUTE</a>
+  <nav>
+    <ul class="main-nav">
+      <li><a href="#">Explore</a>
+        <div class="nav-panel"><div class="nav-panel-inner">
+          <a href="tours.html">Tours</a>
+          <a href="index.html#map">Destinations</a>
+          <a href="tour-detail.html#route">Routes</a>
+          <a href="index.html#styles">Experiences</a>
+          <a href="tour-detail.html#levels">Difficulty levels</a>
+          <a href="index.html#departures">Seasons</a>
+        </div></div>
+      </li>
+      <li><a href="#">Plan</a>
+        <div class="nav-panel"><div class="nav-panel-inner">
+          <a href="calendar.html">Tour calendar</a>
+          <a href="build-adventure.html">Custom tour</a>
+          <a href="build-adventure.html">Build your trip</a>
+          <a href="#">Group tours</a>
+          <a href="#">Bike rental</a>
+          <a href="#">Accommodation</a>
+          <a href="#">Transport</a>
+          <a href="#">Travel information</a>
+        </div></div>
+      </li>
+      <li><a href="#">Ride</a>
+        <div class="nav-panel"><div class="nav-panel-inner">
+          <a href="index.html#journal">MTB stories</a>
+          <a href="index.html#journal">Rider journal</a>
+          <a href="index.html#gallery">Videos</a>
+          <a href="index.html#gallery">Photo gallery</a>
+          <a href="tour-detail.html#route">Route guides</a>
+          <a href="index.html#reviews">Rider community</a>
+        </div></div>
+      </li>
+      <li><a href="#">About</a>
+        <div class="nav-panel"><div class="nav-panel-inner">
+          <a href="index.html#why">Our story</a>
+          <a href="index.html#guides">Our guides</a>
+          <a href="index.html#why">Safety</a>
+          <a href="index.html#sustain">Sustainability</a>
+          <a href="index.html#why">Why Nepal</a>
+          <a href="index.html#reviews">Reviews</a>
+        </div></div>
+      </li>
+    </ul>
+  </nav>
+  <div class="header-actions">
+    <a href="tours.html" class="nav-cta">Browse fixed tours</a>
+    <button class="nav-toggle" aria-label="Menu">☰</button>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="topo-bg"></div>
+  <div class="wrap" style="position:relative;">
+    <div class="detail-crumb"><a href="index.html">Home</a> / Build your adventure</div>
+    <h1>Tell us how you ride</h1>
+    <p>Seven quick questions. A guide reads every request personally and replies with a proposed route, difficulty rating and price — no obligation to book.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="wizard-frame">
+
+      <div class="wizard-main">
+        <div class="wizard-steps">
+          <div class="step-pip active"></div><div class="step-pip"></div><div class="step-pip"></div>
+          <div class="step-pip"></div><div class="step-pip"></div><div class="step-pip"></div><div class="step-pip"></div>
+        </div>
+
+        <div class="wizard-step active" data-step="0">
+          <span class="q-num">Question 1 of 7</span>
+          <h2>Which tour would you like customized?</h2>
+          <p style="color:var(--paper-dim); font-size:14px; margin-bottom:20px;">Pick a starting point from our catalogue — a guide will tailor the route, dates and price around it. Not sure yet? Say so and we'll suggest one.</p>
+          <div class="wizard-field">
+            <label for="w-tour">Base tour</label>
+            <select class="wizard-input" id="w-tour" name="tour"><option value="">Loading tours…</option></select>
+          </div>
+          <div id="w-tour-preview" class="tour-preview hidden"></div>
+          <div class="wizard-field">
+            <label for="w-date">Preferred start date <span style="color:var(--paper-dim); text-transform:none; letter-spacing:0;">(optional — your own choice, not tied to a fixed departure)</span></label>
+            <input class="wizard-input" id="w-date" name="preferredDate" type="date">
+          </div>
+          <div class="wizard-nav"><span></span><button class="btn btn-solid" data-next>Next</button></div>
+        </div>
+
+        <div class="wizard-step" data-step="1">
+          <span class="q-num">Question 2 of 7</span>
+          <h2>How long do you have?</h2>
+          <div class="opt-grid">
+            <button class="opt-pill" data-field="duration" data-value="1–3 days">1–3 days<small>A taster</small></button>
+            <button class="opt-pill" data-field="duration" data-value="4–7 days">4–7 days<small>A proper trip</small></button>
+            <button class="opt-pill" data-field="duration" data-value="8–14 days">8–14 days<small>An expedition</small></button>
+            <button class="opt-pill" data-field="duration" data-value="15+ days">15+ days<small>The big one</small></button>
+          </div>
+          <div class="wizard-nav"><button class="btn btn-ghost" data-back>Back</button><button class="btn btn-solid" data-next>Next</button></div>
+        </div>
+
+        <div class="wizard-step" data-step="2">
+          <span class="q-num">Question 3 of 7</span>
+          <h2>What's your riding style?</h2>
+          <div class="opt-grid">
+            <button class="opt-pill" data-field="style" data-value="Trail">Trail</button>
+            <button class="opt-pill" data-field="style" data-value="Enduro">Enduro</button>
+            <button class="opt-pill" data-field="style" data-value="XC">XC</button>
+            <button class="opt-pill" data-field="style" data-value="Downhill">Downhill</button>
+            <button class="opt-pill" data-field="style" data-value="Bikepacking">Bikepacking</button>
+            <button class="opt-pill" data-field="style" data-value="A mix">A mix of everything</button>
+          </div>
+          <div class="wizard-nav"><button class="btn btn-ghost" data-back>Back</button><button class="btn btn-solid" data-next>Next</button></div>
+        </div>
+
+        <div class="wizard-step" data-step="3">
+          <span class="q-num">Question 4 of 7</span>
+          <h2>What's your experience level?</h2>
+          <div class="opt-grid">
+            <button class="opt-pill" data-field="experience" data-value="Beginner">Beginner<small>New to multi-day MTB</small></button>
+            <button class="opt-pill" data-field="experience" data-value="Intermediate">Intermediate<small>Comfortable on singletrack</small></button>
+            <button class="opt-pill" data-field="experience" data-value="Advanced">Advanced<small>Confident, technical terrain</small></button>
+            <button class="opt-pill" data-field="experience" data-value="Expert">Expert<small>Multi-day expedition ready</small></button>
+          </div>
+          <div class="wizard-nav"><button class="btn btn-ghost" data-back>Back</button><button class="btn btn-solid" data-next>Next</button></div>
+        </div>
+
+        <div class="wizard-step" data-step="4">
+          <span class="q-num">Question 5 of 7</span>
+          <h2>Group size and budget</h2>
+          <div class="wizard-field">
+            <label for="w-groupsize">Group size</label>
+            <input class="wizard-input" id="w-groupsize" name="groupsize" type="text" placeholder="e.g. 2 riders">
+          </div>
+          <div class="wizard-field">
+            <label for="w-budget">Approximate budget per person</label>
+            <input class="wizard-input" id="w-budget" name="budget" type="text" placeholder="e.g. €1,500–2,000">
+          </div>
+          <div class="wizard-nav"><button class="btn btn-ghost" data-back>Back</button><button class="btn btn-solid" data-next>Next</button></div>
+        </div>
+
+        <div class="wizard-step" data-step="5">
+          <span class="q-num">Question 6 of 7</span>
+          <h2>What matters most to you?</h2>
+          <p style="color:var(--paper-dim); font-size:14px; margin-bottom:20px;">Pick as many as you like.</p>
+          <div class="opt-grid">
+            <button class="opt-pill" data-field="preferences" data-value="Big descents" data-multi="true">Big descents</button>
+            <button class="opt-pill" data-field="preferences" data-value="High altitude" data-multi="true">High altitude</button>
+            <button class="opt-pill" data-field="preferences" data-value="Culture" data-multi="true">Culture</button>
+            <button class="opt-pill" data-field="preferences" data-value="Remote trails" data-multi="true">Remote trails</button>
+            <button class="opt-pill" data-field="preferences" data-value="Photography" data-multi="true">Photography</button>
+            <button class="opt-pill" data-field="preferences" data-value="Camping" data-multi="true">Camping</button>
+            <button class="opt-pill" data-field="preferences" data-value="Luxury" data-multi="true">Luxury</button>
+            <button class="opt-pill" data-field="preferences" data-value="Technical riding" data-multi="true">Technical riding</button>
+          </div>
+          <div class="wizard-nav"><button class="btn btn-ghost" data-back>Back</button><button class="btn btn-solid" data-next>Next</button></div>
+        </div>
+
+        <div class="wizard-step" data-step="6">
+          <span class="q-num">Question 7 of 7</span>
+          <h2>Where should we send your itinerary?</h2>
+          <div class="wizard-field">
+            <label for="w-name">Name</label>
+            <input class="wizard-input" id="w-name" name="name" type="text" placeholder="Your name">
+          </div>
+          <div class="wizard-field">
+            <label for="w-email">Email</label>
+            <input class="wizard-input" id="w-email" name="email" type="email" placeholder="you@email.com">
+          </div>
+          <div class="wizard-nav"><button class="btn btn-ghost" data-back>Back</button><button class="btn btn-solid" id="wizard-submit">Request my adventure</button></div>
+        </div>
+      </div>
+
+      <aside class="wizard-summary">
+        <h4>Your request so far</h4>
+        <div class="ws-row empty"><span>Base tour</span><span id="ws-destination">Not set yet</span></div>
+        <div class="ws-row empty"><span>Preferred date</span><span id="ws-preferreddate">Not set yet</span></div>
+        <div class="ws-row empty"><span>Duration</span><span id="ws-duration">Not set yet</span></div>
+        <div class="ws-row empty"><span>Riding style</span><span id="ws-style">Not set yet</span></div>
+        <div class="ws-row empty"><span>Experience</span><span id="ws-experience">Not set yet</span></div>
+        <div class="ws-row empty"><span>Group size</span><span id="ws-groupsize">Not set yet</span></div>
+        <div class="ws-row empty"><span>Budget</span><span id="ws-budget">Not set yet</span></div>
+        <div class="ws-row empty"><span>Priorities</span><span id="ws-preferences">Not set yet</span></div>
+        <p style="font-size:12px; color:var(--paper-dim); margin-top:18px; line-height:1.6;">This goes straight to a guide, not a bot. Expect a reply within two working days.</p>
+      </aside>
+
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-bottom">
+      <span>© 2026 High Route MTB, Kathmandu</span>
+      <span><a href="index.html">Back to the homepage</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tour Calendar | High Route MTB Nepal</title>
+<meta name="description" content="Live departure calendar for every High Route tour, with real-time seat availability.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="logo"><span class="mark">◆</span> HIGH ROUTE</a>
+  <nav>
+    <ul class="main-nav">
+      <li><a href="#">Explore</a>
+        <div class="nav-panel"><div class="nav-panel-inner">
+          <a href="tours.html">Tours</a>
+          <a href="index.html#map">Destinations</a>
+          <a href="tour-detail.html#route">Routes</a>
+          <a href="index.html#styles">Experiences</a>
+          <a href="tour-detail.html#levels">Difficulty levels</a>
+          <a href="index.html#departures">Seasons</a>
+        </div></div>
+      </li>
+      <li><a href="#">Plan</a>
+        <div class="nav-panel"><div class="nav-panel-inner">
+          <a href="calendar.html">Tour calendar</a>
+          <a href="build-adventure.html">Custom tour</a>
+          <a href="build-adventure.html">Build your trip</a>
+          <a href="#">Group tours</a>
+          <a href="#">Bike rental</a>
+          <a href="#">Accommodation</a>
+          <a href="#">Transport</a>
+          <a href="#">Travel information</a>
+        </div></div>
+      </li>
+      <li><a href="#">Ride</a>
+        <div class="nav-panel"><div class="nav-panel-inner">
+          <a href="index.html#journal">MTB stories</a>
+          <a href="index.html#journal">Rider journal</a>
+          <a href="index.html#gallery">Videos</a>
+          <a href="index.html#gallery">Photo gallery</a>
+          <a href="tour-detail.html#route">Route guides</a>
+          <a href="index.html#reviews">Rider community</a>
+        </div></div>
+      </li>
+      <li><a href="#">About</a>
+        <div class="nav-panel"><div class="nav-panel-inner">
+          <a href="index.html#why">Our story</a>
+          <a href="index.html#guides">Our guides</a>
+          <a href="index.html#why">Safety</a>
+          <a href="index.html#sustain">Sustainability</a>
+          <a href="index.html#why">Why Nepal</a>
+          <a href="index.html#reviews">Reviews</a>
+        </div></div>
+      </li>
+    </ul>
+  </nav>
+  <div class="header-actions">
+    <a href="tours.html" class="nav-cta">Browse tours</a>
+    <button class="nav-toggle" aria-label="Menu">☰</button>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="topo-bg"></div>
+  <div class="wrap" style="position:relative;">
+    <div class="detail-crumb"><a href="index.html">Home</a> / Calendar</div>
+    <h1>Departure calendar</h1>
+    <p>Every confirmed and forming departure, with live seat counts. Request-only tours are built around dates you propose.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="cal-toolbar">
+      <div class="cal-month-nav">
+        <button id="cal-prev" aria-label="Previous month">‹</button>
+        <h3 id="cal-month-label">September 2026</h3>
+        <button id="cal-next" aria-label="Next month">›</button>
+      </div>
+      <div class="cal-filters">
+        <select id="cal-f-dest"><option value="">All destinations</option><option>Kathmandu</option><option>Pokhara</option><option>Mustang</option><option>Annapurna</option><option>Langtang</option><option>Manaslu</option></select>
+        <select id="cal-f-diff"><option value="">All difficulty</option><option>Beginner</option><option>Intermediate</option><option>Advanced</option><option>Expert</option></select>
+        <select id="cal-f-dur"><option value="">All durations</option><option>1–3 days</option><option>4–7 days</option><option>8–14 days</option><option>15+ days</option></select>
+      </div>
+    </div>
+
+    <div id="my-custom-trips" class="hidden" style="margin-bottom:24px; padding:16px 18px; background:rgba(242,238,226,0.04); border:1px solid var(--line); border-radius:10px;">
+      <h5 style="font-size:12px; text-transform:uppercase; letter-spacing:0.03em; color:var(--paper-dim); margin:0 0 10px;">Your custom trips</h5>
+      <div id="my-custom-trips-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+    </div>
+
+    <p id="cal-empty-note" style="display:none; color:var(--paper-dim); font-size:14px; margin:-8px 0 16px;">No departures match these filters this month.</p>
+    <div class="calendar-grid" id="calendar-grid">
+      <div class="cal-weekday">Sun</div><div class="cal-weekday">Mon</div><div class="cal-weekday">Tue</div><div class="cal-weekday">Wed</div><div class="cal-weekday">Thu</div><div class="cal-weekday">Fri</div><div class="cal-weekday">Sat</div>
+    </div>
+
+    <div class="cal-legend">
+      <span><i style="background:#7FBF6B;"></i>Open — 5+ spaces</span>
+      <span><i style="background:#E8B33D;"></i>Few spaces left</span>
+      <span><i style="background:#D9534F;"></i>Fully booked</span>
+      <span><i style="background:#6FA0B8;"></i>Request-only</span>
+    </div>
+
+    <div style="text-align:center; margin-top:56px;">
+      <p style="color:var(--paper-dim); font-size:15px; margin-bottom:20px;">Don't see dates that work? Every tour can also run as a private departure.</p>
+      <a href="build-adventure.html" class="btn btn-solid">Request custom dates</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-bottom">
+      <span>© 2026 High Route MTB, Kathmandu</span>
+      <span><a href="index.html">Back to the homepage</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="main.js"></script>
+<script>
+/* Builds the month grid from scratch (day-of-week math, no hand-written
+   markup) and fills it from /api/departures?month=YYYY-MM, so Previous/Next
+   actually work and aren't locked to one hard-coded month. Destination /
+   difficulty / duration selects filter the already-fetched month client-side. */
+(function(){
+  const grid = document.getElementById('calendar-grid');
+  if(!grid) return;
+
+  const monthLabel = document.getElementById('cal-month-label');
+  const emptyNote = document.getElementById('cal-empty-note');
+  const fDest = document.getElementById('cal-f-dest');
+  const fDiff = document.getElementById('cal-f-diff');
+  const fDur = document.getElementById('cal-f-dur');
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const WEEKDAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  const DIFF_BUCKETS = { Beginner:[1], Intermediate:[2,3], Advanced:[4], Expert:[5] };
+  const DUR_BUCKETS = { '1\u20133 days':[1,3], '4\u20137 days':[4,7], '8\u201314 days':[8,14], '15+ days':[15,999] };
+
+  let cursor = new Date(); // real "today" \u2014 no hard-coded month
+  cursor.setDate(1);
+  let departures = [];
+
+  function statusClass(status){
+    if(status === 'full') return 'full';
+    if(status === 'request_only') return 'request';
+    if(status === 'few_spaces') return 'few';
+    return 'open';
+  }
+  function statusText(dep){
+    if(dep.status === 'full') return 'Full';
+    if(dep.status === 'request_only') return 'Request-only';
+    return dep.spaces_left + (dep.spaces_left === 1 ? ' spot' : ' spots');
+  }
+  function matchesFilters(dep){
+    if(dep.status === 'cancelled') return false; // cancelled dates aren't bookable, so keep them off the public calendar
+    if(fDest.value && dep.region !== fDest.value) return false;
+    if(fDiff.value){
+      const range = DIFF_BUCKETS[fDiff.value];
+      if(!range.includes(dep.difficulty_level)) return false;
+    }
+    if(fDur.value){
+      const [lo,hi] = DUR_BUCKETS[fDur.value];
+      if(dep.duration_days < lo || dep.duration_days > hi) return false;
+    }
+    return true;
+  }
+
+  function buildShell(year, month){
+    grid.querySelectorAll('.cal-day').forEach(el => el.remove());
+    const firstWeekday = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    for(let i = 0; i < firstWeekday; i++){
+      const empty = document.createElement('div');
+      empty.className = 'cal-day empty';
+      grid.appendChild(empty);
+    }
+    for(let day = 1; day <= daysInMonth; day++){
+      const cell = document.createElement('div');
+      cell.className = 'cal-day';
+      cell.dataset.day = String(day);
+      cell.innerHTML = '<span class="cal-daynum">' + day + '</span>';
+      grid.appendChild(cell);
+    }
+  }
+
+  function renderEvents(){
+    grid.querySelectorAll('.cal-event').forEach(el => el.remove());
+    const filtered = departures.filter(matchesFilters);
+    const byDay = {};
+    filtered.forEach(dep => {
+      const day = Number(dep.start_date.slice(8, 10));
+      (byDay[day] = byDay[day] || []).push(dep);
+    });
+    Object.keys(byDay).forEach(day => {
+      const cell = grid.querySelector('.cal-day[data-day="' + day + '"]');
+      if(!cell) return;
+      byDay[day].forEach(dep => {
+        const a = document.createElement('a');
+        // trip.html figures out on its own whether the signed-in rider
+        // already booked this exact departure (shows it in manage mode) or
+        // not (shows tour + guide details with a Book button) — see main.js.
+        a.href = 'trip.html?departure=' + dep.id;
+        a.className = 'cal-event ' + statusClass(dep.status);
+        a.innerHTML = '<b>' + escapeHtml(dep.tour_name) + '</b><br>' + dep.duration_days + ' days \u00b7 ' + escapeHtml(statusText(dep));
+        cell.appendChild(a);
+      });
+    });
+    emptyNote.style.display = (departures.length && !filtered.length) ? 'block' : 'none';
+  }
+
+  function loadMonth(){
+    const year = cursor.getFullYear(), month = cursor.getMonth();
+    monthLabel.textContent = MONTH_NAMES[month] + ' ' + year;
+    buildShell(year, month);
+    const monthParam = year + '-' + String(month + 1).padStart(2, '0');
+    apiGet('/api/departures?month=' + monthParam).then(data => {
+      departures = data.departures;
+      renderEvents();
+    }).catch(err => {
+      departures = [];
+      console.warn('Calendar: could not load live departures for ' + monthParam + '.', err.message);
+    });
+  }
+
+  document.getElementById('cal-prev').addEventListener('click', () => {
+    cursor.setMonth(cursor.getMonth() - 1);
+    loadMonth();
+  });
+  document.getElementById('cal-next').addEventListener('click', () => {
+    cursor.setMonth(cursor.getMonth() + 1);
+    loadMonth();
+  });
+  [fDest, fDiff, fDur].forEach(sel => sel.addEventListener('change', renderEvents));
+
+  function jumpToDate(dateStr){
+    const d = new Date(dateStr + 'T00:00:00Z');
+    cursor = new Date(d.getUTCFullYear(), d.getUTCMonth(), 1);
+    loadMonth();
+  }
+
+  /** Every one of the signed-in rider's own custom trips, not just the
+   *  nearest one — a month-grid calendar can only ever show one month at a
+   *  time, so a rider with trips in, say, October AND January would only
+   *  ever see whichever one the grid currently happens to be on, with no
+   *  way to know the other one even exists without blindly clicking through
+   *  months. This panel lists all of them up front, each a one-click jump
+   *  to its own month (never navigating away — trip details stay one more
+   *  click away via "View trip"), so nothing a rider actually has booked is
+   *  ever silently missing from this page. */
+  function renderMyCustomTrips(mine){
+    const panel = document.getElementById('my-custom-trips');
+    const list = document.getElementById('my-custom-trips-list');
+    if(!mine.length){ panel.classList.add('hidden'); return; }
+    const dateFmt = s => new Date(s + 'T00:00:00Z').toLocaleDateString(undefined, { day:'numeric', month:'long', year:'numeric', timeZone:'UTC' });
+    list.innerHTML = mine.map(d => `
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <span style="font-size:13.5px;"><b>${escapeHtml(d.tour_name)}</b> &mdash; ${escapeHtml(dateFmt(d.start_date))} &middot; ${d.duration_days} days</span>
+        <span>
+          <button type="button" class="btn btn-ghost btn-small" data-jump="${escapeHtml(d.start_date)}">View on calendar</button>
+          <a class="btn btn-ghost btn-small" href="tour-detail.html?request=${d.custom_request_id}" target="_blank" rel="noopener">View trip</a>
+        </span>
+      </div>`).join('');
+    list.querySelectorAll('[data-jump]').forEach(btn => btn.addEventListener('click', () => jumpToDate(btn.dataset.jump)));
+    panel.classList.remove('hidden');
+  }
+
+  /* A signed-in rider's own confirmed custom trip is real but often months
+     out — starting them on today's month would leave it invisible behind
+     however many "next" clicks it takes to reach it, which reads as "it's
+     not on the calendar at all". So a signed-in rider's very first load
+     jumps straight to their own NEAREST upcoming custom departure's month,
+     and the panel above lists every one of them (not just that nearest
+     one) so a trip further out is never silently missing from this page;
+     everyone else (and every later prev/next click) just uses today's
+     month as before. */
+  function boot(){
+    if(typeof Auth !== 'undefined' && Auth.isSignedIn()){
+      apiGet('/api/departures?upcoming=1').then(data => {
+        const mine = (data.departures || [])
+          .filter(d => d.is_custom)
+          .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+        renderMyCustomTrips(mine);
+        if(mine.length){
+          const d = new Date(mine[0].start_date + 'T00:00:00Z');
+          cursor = new Date(d.getUTCFullYear(), d.getUTCMonth(), 1);
+        }
+      }).catch(() => {}).then(loadMonth);
+    } else {
+      loadMonth();
+    }
+  }
+  boot();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Confirm Your Custom Trip | High Route MTB Nepal</title>
+<meta name="description" content="Confirm your custom trip: riders, add-ons, and a full price breakdown before you pay the deposit.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="logo"><span class="mark">◆</span> HIGH ROUTE</a>
+  <nav>
+    <ul class="main-nav">
+      <li><a href="tours.html">Tours</a></li>
+      <li><a href="calendar.html">Calendar</a></li>
+      <li><a href="dashboard.html">My account</a></li>
+    </ul>
+  </nav>
+  <div class="header-actions">
+    <button class="nav-toggle" aria-label="Menu">☰</button>
+  </div>
+</header>
+
+<section class="page-hero" style="padding-bottom:24px;">
+  <div class="topo-bg"></div>
+  <div class="wrap" style="position:relative;">
+    <div class="detail-crumb" id="cco-crumb"><a href="index.html">Home</a> / <a href="dashboard.html">My account</a> / Confirm trip</div>
+    <h1 id="cco-title">Confirm your custom trip</h1>
+    <p id="cco-subtitle">Loading your proposal…</p>
+  </div>
+</section>
+
+<section class="section" id="cco-app">
+  <div class="wrap">
+    <div class="checkout-frame">
+
+      <div class="checkout-main">
+        <div class="checkout-steps">
+          <div class="checkout-pip active"></div><div class="checkout-pip"></div><div class="checkout-pip"></div>
+          <div class="checkout-pip"></div><div class="checkout-pip"></div>
+        </div>
+
+        <!-- Step 0: proposal summary -->
+        <div class="checkout-step active" data-step="0">
+          <span class="q-num">Step 1 of 5</span>
+          <h2>Your proposal</h2>
+          <div id="cco-proposal-summary"><p style="color:var(--paper-dim);">Loading…</p></div>
+          <div class="checkout-nav"><span></span><button class="btn btn-solid" data-cco-next>Continue</button></div>
+        </div>
+
+        <!-- Step 1: number of riders -->
+        <div class="checkout-step" data-step="1">
+          <span class="q-num">Step 2 of 5</span>
+          <h2>How many riders?</h2>
+          <div class="checkout-stepper">
+            <button type="button" id="cco-riders-minus" aria-label="Fewer riders">&minus;</button>
+            <b id="cco-riders-count">1</b>
+            <button type="button" id="cco-riders-plus" aria-label="More riders">+</button>
+          </div>
+          <p class="checkout-spaces-note" id="cco-spaces-note">This is a private departure built just for your group — up to 20 riders.</p>
+          <div class="checkout-nav"><button class="btn btn-ghost" data-cco-back>Back</button><button class="btn btn-solid" data-cco-next>Continue</button></div>
+        </div>
+
+        <!-- Step 2: rider details -->
+        <div class="checkout-step" data-step="2">
+          <span class="q-num">Step 3 of 5</span>
+          <h2>Rider details</h2>
+          <p style="color:var(--paper-dim); font-size:14px; margin-bottom:8px;">Required for every rider on this trip, including you.</p>
+          <div id="cco-rider-forms"></div>
+          <p class="checkout-error hidden" id="cco-riders-error"></p>
+          <div class="checkout-nav"><button class="btn btn-ghost" data-cco-back>Back</button><button class="btn btn-solid" data-cco-next>Continue</button></div>
+        </div>
+
+        <!-- Step 3: add-ons -->
+        <div class="checkout-step" data-step="3">
+          <span class="q-num">Step 4 of 5</span>
+          <h2>Add-ons</h2>
+          <div id="cco-addons-list"><p style="color:var(--paper-dim);">Loading available add-ons…</p></div>
+          <div class="checkout-nav"><button class="btn btn-ghost" data-cco-back>Back</button><button class="btn btn-solid" data-cco-next>Continue</button></div>
+        </div>
+
+        <!-- Step 4: review + pay deposit -->
+        <div class="checkout-step" data-step="4">
+          <span class="q-num">Step 5 of 5</span>
+          <h2>Review &amp; pay deposit</h2>
+          <div id="cco-review"></div>
+          <div class="dash-field"><label>Name on card</label><input class="checkout-input" id="cco-pay-name" required autocomplete="cc-name"></div>
+          <div class="dash-field"><label>Card number</label><input class="checkout-input" id="cco-pay-number" required inputmode="numeric" autocomplete="cc-number" placeholder="4242 4242 4242 4242"></div>
+          <div class="dash-row">
+            <div class="dash-field"><label>Expiry (MM/YY)</label><input class="checkout-input" id="cco-pay-expiry" required autocomplete="cc-exp" placeholder="12/28"></div>
+            <div class="dash-field"><label>CVV</label><input class="checkout-input" id="cco-pay-cvv" required inputmode="numeric" autocomplete="cc-csc" placeholder="123"></div>
+          </div>
+          <p class="checkout-error hidden" id="cco-confirm-error"></p>
+          <div class="checkout-nav"><button class="btn btn-ghost" data-cco-back>Back</button><button class="btn btn-solid" id="cco-confirm-btn">Pay deposit &amp; confirm</button></div>
+        </div>
+      </div>
+
+      <aside class="checkout-summary">
+        <h4>Price summary</h4>
+        <div class="ws-row empty"><span>Base fare</span><span id="ccs-base">—</span></div>
+        <div class="ws-row empty"><span>Add-ons</span><span id="ccs-addons">—</span></div>
+        <div class="ws-row total"><span>Total</span><span id="ccs-total">—</span></div>
+        <div class="ws-row"><span id="ccs-deposit-label">Deposit due now</span><span id="ccs-deposit">—</span></div>
+        <div class="ws-row"><span>Balance due later</span><span id="ccs-balance">—</span></div>
+        <p style="font-size:12px; color:var(--paper-dim); margin-top:18px; line-height:1.6;">
+          This deposit is charged now to confirm your private departure — demo checkout, no real card is charged.
+          <a href="cancellation-policy.html">Cancellation terms</a>.
+        </p>
+      </aside>
+
+    </div>
+  </div>
+</section>
+
+<div id="cco-gate" class="section hidden">
+  <div class="wrap" style="text-align:center; padding:60px 0;">
+    <h2>Sign in to continue</h2>
+    <p style="color:var(--paper-dim); margin-bottom:24px;">You need to be signed in as the requester to confirm this trip.</p>
+  </div>
+</div>
+<div id="cco-error-view" class="section hidden">
+  <div class="wrap" style="text-align:center; padding:60px 0;">
+    <h2>Couldn't load this proposal</h2>
+    <p id="cco-error-msg" style="color:var(--paper-dim); margin-bottom:24px;"></p>
+    <a href="dashboard.html" class="btn btn-solid">Back to your account</a>
+  </div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-bottom">
+      <span>© 2026 High Route MTB, Kathmandu</span>
+      <span><a href="index.html">Back to the homepage</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="main.js"></script>
+</body>
+</html>

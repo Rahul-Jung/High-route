@@ -1,0 +1,14 @@
+{
+  "name": "high-route-mtb-backend",
+  "version": "1.0.0",
+  "description": "Backend API, database and GPS simulation for the High Route MTB platform. Zero external dependencies — uses Node's built-in http and node:sqlite.",
+  "main": "server.js",
+  "type": "commonjs",
+  "engines": { "node": ">=22.5.0" },
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node seed.js",
+    "simulate-gps": "node simulate-gps.js"
+  },
+  "license": "UNLICENSED"
+}

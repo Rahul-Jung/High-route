@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invoice | High Route MTB Nepal</title>
+<meta name="description" content="Download or print your High Route MTB booking invoice.">
+<link rel="stylesheet" href="style.css">
+<style>
+  .invoice-sheet{
+    max-width:720px; margin:0 auto; background:var(--stone); border:1px solid var(--line); border-radius:var(--radius-sm);
+    padding:clamp(28px,5vw,48px);
+  }
+  .invoice-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:20px; margin-bottom:32px; flex-wrap:wrap; }
+  .invoice-head h2{ font-size:26px; text-transform:uppercase; color:var(--paper); margin-bottom:6px; }
+  .invoice-meta{ text-align:right; font-family:var(--f-mono); font-size:12.5px; color:var(--paper-dim); line-height:1.7; }
+  .invoice-meta b{ color:var(--paper); }
+  .invoice-parties{ display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:32px; }
+  .invoice-parties h5{ font-family:var(--f-mono); font-size:11px; color:var(--glacier); margin-bottom:8px; text-transform:uppercase; }
+  .invoice-parties p{ font-size:14px; color:var(--paper-dim); margin:0; line-height:1.6; }
+  .invoice-table{ width:100%; border-collapse:collapse; margin-bottom:24px; }
+  .invoice-table th{ text-align:left; font-family:var(--f-mono); font-size:11px; color:var(--paper-dim); text-transform:uppercase; padding:10px 0; border-bottom:1px solid var(--line); }
+  .invoice-table td{ padding:12px 0; border-bottom:1px solid var(--line); font-size:14px; color:var(--paper); }
+  .invoice-table td:last-child, .invoice-table th:last-child{ text-align:right; font-family:var(--f-mono); }
+  .invoice-totals{ margin-left:auto; max-width:320px; }
+  .invoice-totals .row{ display:flex; justify-content:space-between; padding:8px 0; font-size:14px; color:var(--paper-dim); }
+  .invoice-totals .row.grand{ border-top:1px solid var(--line); margin-top:6px; padding-top:14px; font-size:18px; color:var(--paper); font-weight:700; }
+  .invoice-status{ display:inline-block; font-family:var(--f-mono); font-size:12px; padding:5px 12px; border-radius:20px; margin-top:6px; }
+  .invoice-actions{ display:flex; gap:12px; justify-content:center; margin:28px 0; flex-wrap:wrap; }
+  @media print{
+    .site-header, .invoice-actions, footer, .page-hero{ display:none !important; }
+    body{ background:#fff; color:#000; }
+    .invoice-sheet{ border:0; padding:0; max-width:none; }
+    .invoice-sheet, .invoice-sheet *{ color:#000 !important; background:transparent !important; }
+    .invoice-table th, .invoice-table td, .invoice-totals .row.grand{ border-color:#ccc !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="logo"><span class="mark">◆</span> HIGH ROUTE</a>
+  <nav><ul class="main-nav"><li><a href="dashboard.html">My account</a></li></ul></nav>
+  <div class="header-actions"><button class="nav-toggle" aria-label="Menu">☰</button></div>
+</header>
+
+<section class="page-hero" style="padding-bottom:24px;">
+  <div class="topo-bg"></div>
+  <div class="wrap" style="position:relative;">
+    <div class="detail-crumb"><a href="index.html">Home</a> / <a href="dashboard.html">My account</a> / Invoice</div>
+    <h1>Invoice</h1>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="invoice-actions">
+      <button type="button" class="btn btn-solid" onclick="window.print()">Print / Save as PDF</button>
+      <a href="dashboard.html" class="btn btn-ghost">Back to my account</a>
+    </div>
+    <div id="invoice-root">
+      <div class="invoice-sheet"><p style="color:var(--paper-dim);">Loading invoice…</p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-bottom">
+      <span>© 2026 High Route MTB, Kathmandu</span>
+      <span><a href="index.html">Back to the homepage</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="main.js"></script>
+</body>
+</html>

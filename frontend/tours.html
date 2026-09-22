@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All Tours | High Route MTB Nepal</title>
+<meta name="description" content="Browse every guided mountain-bike tour in Nepal, filtered by duration, difficulty, riding style, environment and season.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="logo"><span class="mark">◆</span> HIGH ROUTE</a>
+  <nav>
+    <ul class="main-nav">
+      <li><a href="#">Explore</a>
+        <div class="nav-panel"><div class="nav-panel-inner">
+          <a href="tours.html">Tours</a>
+          <a href="index.html#map">Destinations</a>
+          <a href="tour-detail.html#route">Routes</a>
+          <a href="index.html#styles">Experiences</a>
+          <a href="tour-detail.html#levels">Difficulty levels</a>
+          <a href="index.html#departures">Seasons</a>
+        </div></div>
+      </li>
+      <li><a href="#">Plan</a>
+        <div class="nav-panel"><div class="nav-panel-inner">
+          <a href="calendar.html">Tour calendar</a>
+          <a href="build-adventure.html">Custom tour</a>
+          <a href="build-adventure.html">Build your trip</a>
+          <a href="#">Group tours</a>
+          <a href="#">Bike rental</a>
+          <a href="#">Accommodation</a>
+          <a href="#">Transport</a>
+          <a href="#">Travel information</a>
+        </div></div>
+      </li>
+      <li><a href="#">Ride</a>
+        <div class="nav-panel"><div class="nav-panel-inner">
+          <a href="index.html#journal">MTB stories</a>
+          <a href="index.html#journal">Rider journal</a>
+          <a href="index.html#gallery">Videos</a>
+          <a href="index.html#gallery">Photo gallery</a>
+          <a href="tour-detail.html#route">Route guides</a>
+          <a href="index.html#reviews">Rider community</a>
+        </div></div>
+      </li>
+      <li><a href="#">About</a>
+        <div class="nav-panel"><div class="nav-panel-inner">
+          <a href="index.html#why">Our story</a>
+          <a href="index.html#guides">Our guides</a>
+          <a href="index.html#why">Safety</a>
+          <a href="index.html#sustain">Sustainability</a>
+          <a href="index.html#why">Why Nepal</a>
+          <a href="index.html#reviews">Reviews</a>
+        </div></div>
+      </li>
+    </ul>
+  </nav>
+  <div class="header-actions">
+    <a href="calendar.html" class="nav-cta">View calendar</a>
+    <button class="nav-toggle" aria-label="Menu">☰</button>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="topo-bg"></div>
+  <div class="wrap" style="position:relative;">
+    <div class="detail-crumb"><a href="index.html">Home</a> / Tours</div>
+    <h1>All adventures</h1>
+    <p>Ten tours across six regions, from a two-day taster to a twelve-day expedition. Filter by what matters to you — we'd rather you find the right trip than just any trip.</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="listing-layout">
+
+      <aside class="filters-panel" id="filters-panel">
+        <h4>
+          Filter tours
+          <button type="button" id="filters-clear" class="filters-clear">Clear</button>
+          <button type="button" id="filters-toggle" class="filters-toggle" aria-expanded="true" aria-controls="filters-body">Hide filters</button>
+        </h4>
+        <div id="filters-body">
+        <div class="filter-group">
+          <h4>Duration</h4>
+          <label class="filter-opt"><input type="checkbox" data-filter="duration" value="1-3"> 1–3 days</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="duration" value="4-7"> 4–7 days</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="duration" value="8-14"> 8–14 days</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="duration" value="15-999"> 15+ days</label>
+        </div>
+        <div class="filter-group">
+          <h4>Difficulty</h4>
+          <label class="filter-opt"><input type="checkbox" data-filter="difficulty" value="1"> Beginner</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="difficulty" value="2,3"> Intermediate</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="difficulty" value="4"> Advanced</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="difficulty" value="5"> Expert</label>
+        </div>
+        <div class="filter-group">
+          <h4>Riding style</h4>
+          <label class="filter-opt"><input type="checkbox" data-filter="style" value="XC"> XC</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="style" value="Trail"> Trail</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="style" value="Enduro"> Enduro</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="style" value="Bikepacking"> Bikepacking</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="style" value="E-bike"> E-bike</label>
+        </div>
+        <div class="filter-group">
+          <h4>Destination</h4>
+          <label class="filter-opt"><input type="checkbox" data-filter="destination" value="Kathmandu"> Kathmandu</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="destination" value="Pokhara"> Pokhara</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="destination" value="Annapurna"> Annapurna</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="destination" value="Mustang"> Mustang</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="destination" value="Langtang"> Langtang</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="destination" value="Manaslu"> Manaslu</label>
+        </div>
+        <div class="filter-group">
+          <h4>Best season</h4>
+          <label class="filter-opt"><input type="checkbox" data-filter="season" value="spring"> Spring (Mar–May)</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="season" value="summer"> Summer (Jun–Aug)</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="season" value="autumn"> Autumn (Sep–Nov)</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="season" value="winter"> Winter (Dec–Feb)</label>
+        </div>
+        <div class="filter-group">
+          <h4>Group type</h4>
+          <label class="filter-opt"><input type="checkbox" data-filter="groupType" value="2-4"> Private (2–4)</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="groupType" value="5-8"> Small group (5–8)</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="groupType" value="9-12"> Standard group (9–12)</label>
+          <label class="filter-opt"><input type="checkbox" data-filter="groupType" value="13-999"> Large group (13+)</label>
+        </div>
+        <div class="filter-group">
+          <h4>Budget (€)</h4>
+          <div class="filter-range">
+            <input type="number" id="f-budget-min" min="0" step="10" placeholder="Min" inputmode="numeric" aria-label="Minimum budget in euros">
+            <span>–</span>
+            <input type="number" id="f-budget-max" min="0" step="10" placeholder="Max" inputmode="numeric" aria-label="Maximum budget in euros">
+          </div>
+        </div>
+        <div class="filter-group">
+          <h4>Max altitude</h4>
+          <select id="f-max-altitude" aria-label="Maximum altitude">
+            <option value="">Any altitude</option>
+            <option value="2500">Up to 2,500m</option>
+            <option value="3500">Up to 3,500m</option>
+            <option value="4500">Up to 4,500m</option>
+            <option value="5500">Up to 5,500m</option>
+          </select>
+        </div>
+        </div>
+      </aside>
+
+      <div>
+        <div class="filter-count"><span id="tour-count">Loading…</span><span>Sort: Next departure</span></div>
+        <div class="tour-grid-2" id="tour-grid">
+
+          <article class="tour-card">
+            <div class="tour-media"><img src="https://images.unsplash.com/photo-1605050852571-7bb180ca8d98?auto=format&fit=crop&w=1200&q=80" alt="">
+              <span class="tour-tag">Level 5 · Expedition</span><span class="avail"><span class="pip pip-green"></span>6 spaces</span>
+              <span class="tour-loc">Kathmandu → Pokhara → Mustang</span></div>
+            <div class="tour-body"><h3>Upper Mustang — Kingdom of Dirt</h3>
+              <div class="tour-meta"><span>10 days</span><span>Expert</span><span>Enduro</span></div>
+              <div class="tour-stats"><div><b>320km</b><span>riding</span></div><div><b>8,000m</b><span>climbing</span></div><div><b>4,200m</b><span>max alt.</span></div></div>
+              <div class="tour-foot"><div class="tour-price">From <b>€1,850</b></div><a href="tour-detail.html" class="tour-link">View adventure</a></div>
+            </div>
+          </article>
+
+          <article class="tour-card">
+            <div class="tour-media"><img src="https://images.unsplash.com/photo-1621527225138-b4832a1b3992?auto=format&fit=crop&w=1200&q=80" alt="">
+              <span class="tour-tag">Level 4 · Enduro</span><span class="avail"><span class="pip pip-red"></span>Fully booked</span>
+              <span class="tour-loc">Pokhara → Annapurna Circuit</span></div>
+            <div class="tour-body"><h3>Annapurna Epic</h3>
+              <div class="tour-meta"><span>10 days</span><span>Advanced</span><span>Trail / Enduro</span></div>
+              <div class="tour-stats"><div><b>280km</b><span>riding</span></div><div><b>6,400m</b><span>climbing</span></div><div><b>3,800m</b><span>max alt.</span></div></div>
+              <div class="tour-foot"><div class="tour-price">From <b>€1,690</b></div><a href="#" class="tour-link">View adventure</a></div>
+            </div>
+          </article>
+
+          <article class="tour-card">
+            <div class="tour-media"><img src="https://images.unsplash.com/photo-1562861894-0918c74b6448?auto=format&fit=crop&w=1200&q=80" alt="">
+              <span class="tour-tag">Level 1 · Explorer</span><span class="avail"><span class="pip pip-amber"></span>4 spots</span>
+              <span class="tour-loc">Kathmandu Valley</span></div>
+            <div class="tour-body"><h3>Kathmandu Valley Explorer</h3>
+              <div class="tour-meta"><span>3 days</span><span>Beginner</span><span>XC / Trail</span></div>
+              <div class="tour-stats"><div><b>65km</b><span>riding</span></div><div><b>1,200m</b><span>climbing</span></div><div><b>2,100m</b><span>max alt.</span></div></div>
+              <div class="tour-foot"><div class="tour-price">From <b>€420</b></div><a href="#" class="tour-link">View adventure</a></div>
+            </div>
+          </article>
+
+          <article class="tour-card">
+            <div class="tour-media"><img src="https://images.unsplash.com/photo-1713860951944-19640488885f?auto=format&fit=crop&w=1200&q=80" alt="">
+              <span class="tour-tag">Level 5 · Expedition</span><span class="avail"><span class="pip pip-amber"></span>Request-only</span>
+              <span class="tour-loc">Manaslu Circuit</span></div>
+            <div class="tour-body"><h3>Manaslu Wilderness Traverse</h3>
+              <div class="tour-meta"><span>12 days</span><span>Expert</span><span>Bikepacking</span></div>
+              <div class="tour-stats"><div><b>240km</b><span>riding</span></div><div><b>9,100m</b><span>climbing</span></div><div><b>5,106m</b><span>max alt.</span></div></div>
+              <div class="tour-foot"><div class="tour-price">From <b>€2,450</b></div><a href="#" class="tour-link">View adventure</a></div>
+            </div>
+          </article>
+
+          <article class="tour-card">
+            <div class="tour-media"><img src="https://images.unsplash.com/photo-1760892472018-9e3bfe540e3b?auto=format&fit=crop&w=1200&q=80" alt="">
+              <span class="tour-tag">Level 3 · Mountain Rider</span><span class="avail"><span class="pip pip-green"></span>8 spots</span>
+              <span class="tour-loc">Langtang Valley</span></div>
+            <div class="tour-body"><h3>Langtang Forest Flow</h3>
+              <div class="tour-meta"><span>5 days</span><span>Intermediate</span><span>Trail</span></div>
+              <div class="tour-stats"><div><b>95km</b><span>riding</span></div><div><b>3,200m</b><span>climbing</span></div><div><b>3,430m</b><span>max alt.</span></div></div>
+              <div class="tour-foot"><div class="tour-price">From <b>€780</b></div><a href="#" class="tour-link">View adventure</a></div>
+            </div>
+          </article>
+
+          <article class="tour-card">
+            <div class="tour-media"><img src="https://images.unsplash.com/photo-1617397116621-4a3938df7033?auto=format&fit=crop&w=1200&q=80" alt="">
+              <span class="tour-tag">Level 1 · Explorer</span><span class="avail"><span class="pip pip-green"></span>10 spots</span>
+              <span class="tour-loc">Pokhara foothills</span></div>
+            <div class="tour-body"><h3>Pokhara Lakeside Flow Weekend</h3>
+              <div class="tour-meta"><span>2 days</span><span>Beginner</span><span>XC</span></div>
+              <div class="tour-stats"><div><b>32km</b><span>riding</span></div><div><b>600m</b><span>climbing</span></div><div><b>1,740m</b><span>max alt.</span></div></div>
+              <div class="tour-foot"><div class="tour-price">From <b>€190</b></div><a href="#" class="tour-link">View adventure</a></div>
+            </div>
+          </article>
+
+          <article class="tour-card">
+            <div class="tour-media"><img src="https://images.unsplash.com/photo-1625735263130-6ff46f244010?auto=format&fit=crop&w=1200&q=80" alt="">
+              <span class="tour-tag">Level 5 · Expedition</span><span class="avail"><span class="pip pip-amber"></span>Request-only</span>
+              <span class="tour-loc">Upper Dolpo</span></div>
+            <div class="tour-body"><h3>Dolpo Remote Crossing</h3>
+              <div class="tour-meta"><span>14 days</span><span>Expert</span><span>Bikepacking</span></div>
+              <div class="tour-stats"><div><b>260km</b><span>riding</span></div><div><b>8,700m</b><span>climbing</span></div><div><b>4,890m</b><span>max alt.</span></div></div>
+              <div class="tour-foot"><div class="tour-price">From <b>€2,890</b></div><a href="#" class="tour-link">View adventure</a></div>
+            </div>
+          </article>
+
+          <article class="tour-card">
+            <div class="tour-media"><img src="https://images.unsplash.com/photo-1602168430888-e344806f9f29?auto=format&fit=crop&w=1200&q=80" alt="">
+              <span class="tour-tag">Level 2 · Trail Rider</span><span class="avail"><span class="pip pip-green"></span>9 spots</span>
+              <span class="tour-loc">Helambu Ridge</span></div>
+            <div class="tour-body"><h3>Helambu Ridge Traverse</h3>
+              <div class="tour-meta"><span>4 days</span><span>Intermediate</span><span>Trail</span></div>
+              <div class="tour-stats"><div><b>78km</b><span>riding</span></div><div><b>2,300m</b><span>climbing</span></div><div><b>2,860m</b><span>max alt.</span></div></div>
+              <div class="tour-foot"><div class="tour-price">From <b>€560</b></div><a href="#" class="tour-link">View adventure</a></div>
+            </div>
+          </article>
+
+          <article class="tour-card">
+            <div class="tour-media"><img src="https://images.unsplash.com/photo-1594942940158-af338884ac6f?auto=format&fit=crop&w=1200&q=80" alt="">
+              <span class="tour-tag">Level 2 · Trail Rider</span><span class="avail"><span class="pip pip-green"></span>12 spots</span>
+              <span class="tour-loc">Kathmandu → Nagarkot</span></div>
+            <div class="tour-body"><h3>E-Bike Valley Rim</h3>
+              <div class="tour-meta"><span>1 day</span><span>Beginner</span><span>E-bike</span></div>
+              <div class="tour-stats"><div><b>28km</b><span>riding</span></div><div><b>950m</b><span>climbing</span></div><div><b>2,175m</b><span>max alt.</span></div></div>
+              <div class="tour-foot"><div class="tour-price">From <b>€95</b></div><a href="#" class="tour-link">View adventure</a></div>
+            </div>
+          </article>
+
+          <article class="tour-card">
+            <div class="tour-media"><img src="https://images.unsplash.com/photo-1660149109561-b98acecd4238?auto=format&fit=crop&w=1200&q=80" alt="">
+              <span class="tour-tag">Level 4 · Enduro</span><span class="avail"><span class="pip pip-green"></span>7 spots</span>
+              <span class="tour-loc">Rara Lake, Far West</span></div>
+            <div class="tour-body"><h3>Rara Lake Wilderness</h3>
+              <div class="tour-meta"><span>7 days</span><span>Advanced</span><span>Trail / Enduro</span></div>
+              <div class="tour-stats"><div><b>150km</b><span>riding</span></div><div><b>4,600m</b><span>climbing</span></div><div><b>3,660m</b><span>max alt.</span></div></div>
+              <div class="tour-foot"><div class="tour-price">From <b>€1,120</b></div><a href="#" class="tour-link">View adventure</a></div>
+            </div>
+          </article>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-bottom">
+      <span>© 2026 High Route MTB, Kathmandu</span>
+      <span><a href="index.html">Back to the homepage</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="main.js"></script>
+</body>
+</html>

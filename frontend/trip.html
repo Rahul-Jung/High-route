@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">My Trip | High Route MTB Nepal</title>
+<meta id="page-description" name="description" content="Your booking's departure date, assigned guide and full trip details.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <a href="index.html" class="logo"><span class="mark">◆</span> HIGH ROUTE</a>
+  <nav>
+    <ul class="main-nav">
+      <li><a href="#">Explore</a>
+        <div class="nav-panel"><div class="nav-panel-inner">
+          <a href="tours.html">Tours</a>
+          <a href="index.html#map">Destinations</a>
+          <a href="tour-detail.html#route">Routes</a>
+          <a href="index.html#styles">Experiences</a>
+          <a href="tour-detail.html#levels">Difficulty levels</a>
+          <a href="index.html#departures">Seasons</a>
+        </div></div>
+      </li>
+      <li><a href="#">Plan</a>
+        <div class="nav-panel"><div class="nav-panel-inner">
+          <a href="calendar.html">Tour calendar</a>
+          <a href="build-adventure.html">Custom tour</a>
+          <a href="build-adventure.html">Build your trip</a>
+          <a href="#">Group tours</a>
+          <a href="#">Bike rental</a>
+          <a href="#">Accommodation</a>
+          <a href="#">Transport</a>
+          <a href="#">Travel information</a>
+        </div></div>
+      </li>
+      <li><a href="#">Ride</a>
+        <div class="nav-panel"><div class="nav-panel-inner">
+          <a href="index.html#journal">MTB stories</a>
+          <a href="index.html#journal">Rider journal</a>
+          <a href="index.html#gallery">Videos</a>
+          <a href="index.html#gallery">Photo gallery</a>
+          <a href="tour-detail.html#route">Route guides</a>
+          <a href="index.html#reviews">Rider community</a>
+        </div></div>
+      </li>
+      <li><a href="#">About</a>
+        <div class="nav-panel"><div class="nav-panel-inner">
+          <a href="index.html#why">Our story</a>
+          <a href="index.html#guides">Our guides</a>
+          <a href="index.html#why">Safety</a>
+          <a href="index.html#sustain">Sustainability</a>
+          <a href="index.html#why">Why Nepal</a>
+          <a href="index.html#reviews">Reviews</a>
+        </div></div>
+      </li>
+    </ul>
+  </nav>
+  <div class="header-actions">
+    <a href="tours.html" class="nav-cta">Browse tours</a>
+    <button class="nav-toggle" aria-label="Menu">☰</button>
+  </div>
+</header>
+
+<div id="trip-gate" class="dash-gate hidden">
+  <h1>Sign in to view this trip</h1>
+  <p style="color:var(--paper-dim); margin:14px 0 24px; font-size:15px;">Your booking's departure date, guide and trip details live here once you're signed in.</p>
+  <button class="btn btn-solid" id="trip-signin-btn">Sign in</button>
+</div>
+
+<div id="trip-notfound" class="dash-gate hidden">
+  <h1>Trip not found</h1>
+  <p style="color:var(--paper-dim); margin:14px 0 24px; font-size:15px;" id="trip-notfound-msg">This booking doesn't exist, or isn't linked to your account.</p>
+  <a href="dashboard.html" class="btn btn-solid">Back to your account</a>
+</div>
+
+<!-- ============ From here down this page is intentionally IDENTICAL in
+     structure to tour-detail.html — same ids, same CSS, same render
+     functions in main.js (renderTourHeader, the day-tabs/elevation chart,
+     renderTourGuides, renderInclusionsExclusions, renderTourEquipment,
+     renderTourSafety, renderTourCancellation, renderReviews). A trip is
+     still that same tour, so it should never look like a stripped-down
+     second-class page — only the sidebar (booking/payment status instead of
+     "pick a date and book") and a couple of hero details differ. ============ -->
+<div id="trip-app" class="hidden">
+  <section class="detail-hero">
+    <img id="hero-img" src="https://images.unsplash.com/photo-1652361561822-b2aa3f30416a?auto=format&fit=crop&w=1920&q=80" alt="">
+    <div class="detail-hero-content">
+      <div class="detail-crumb"><a href="index.html">Home</a> / <a href="dashboard.html">My account</a> / <span id="crumb-name">Trip</span></div>
+      <h1 id="hero-title">Loading trip…</h1>
+      <p style="color:var(--paper); margin-top:10px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-family:var(--f-mono); font-size:13px;">
+        <span id="trip-dates">—</span>
+        <span id="trip-status" class="dash-status">—</span>
+      </p>
+    </div>
+  </section>
+
+  <div class="quickbar">
+    <div class="wrap">
+      <div class="qb-item">Duration<b id="qb-duration">—</b></div>
+      <div class="qb-item">Difficulty<b id="qb-difficulty">—</b></div>
+      <div class="qb-item">Max altitude<b id="qb-altitude">—</b></div>
+      <div class="qb-item">Riding distance<b id="qb-distance">—</b></div>
+      <div class="qb-item">Group size<b id="qb-groupsize">—</b></div>
+      <div class="qb-item">Best season<b id="qb-season">—</b></div>
+    </div>
+  </div>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="detail-layout">
+
+        <div class="detail-main">
+          <h2>The adventure</h2>
+          <div id="tour-overview"><p style="color:var(--paper-dim);">Loading…</p></div>
+
+          <h2 style="margin-top:56px;">Trip highlights</h2>
+          <div class="ride-grid" id="tour-highlights"></div>
+
+          <h2 id="gallery" style="margin-top:64px;">Gallery</h2>
+          <div class="gallery-grid" id="tour-gallery"></div>
+          <p id="tour-gallery-status" style="color:var(--paper-dim); font-size:14px;">Loading photos…</p>
+
+          <h2 style="margin-top:64px;">Inclusions &amp; exclusions</h2>
+          <div class="ride-grid ride-grid-2col" id="tour-inclusions-grid">
+            <div class="ride-cell"><h5>What's included</h5><ul id="tour-inclusions"><li>Loading…</li></ul></div>
+            <div class="ride-cell"><h5>What's not included</h5><ul id="tour-exclusions"><li>Loading…</li></ul></div>
+          </div>
+
+          <div id="route-section">
+            <h2 id="route" style="margin-top:64px;">Route, day by day</h2>
+            <p style="margin-bottom:8px;">Select a day to see the elevation profile, terrain and overnight stop. Hover the chart for altitude at any point.</p>
+            <p id="data-source-note" style="font-family:var(--f-mono); font-size:11px; color:var(--glacier); margin-bottom:28px;">Loading live route data…</p>
+
+            <div class="day-tabs" id="day-tabs"></div>
+            <div class="day-panel">
+              <div class="day-panel-head">
+                <div>
+                  <h3 id="day-title">—</h3>
+                  <p id="day-desc">—</p>
+                </div>
+                <div class="day-stats">
+                  <div><b id="day-dist">—</b><span>distance</span></div>
+                  <div><b id="day-gain">—</b><span>elev. gain</span></div>
+                  <div><b id="day-loss">—</b><span>elev. loss</span></div>
+                  <div><b id="day-high">—</b><span>high point</span></div>
+                  <div><b id="day-hours">—</b><span>riding time</span></div>
+                </div>
+              </div>
+              <div class="elev-wrap">
+                <canvas id="elev-chart"></canvas>
+                <div id="elev-tooltip" class="elev-tooltip"></div>
+              </div>
+            </div>
+
+            <div id="route-map-wrap" style="margin-top:28px;">
+              <h3 style="font-size:18px; color:var(--paper); text-transform:uppercase; margin-bottom:10px;">Route map</h3>
+              <p id="route-map-note" style="font-family:var(--f-mono); font-size:12px; color:var(--paper-dim); margin-bottom:14px;"></p>
+              <svg id="route-map" class="route-map hidden" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid meet"></svg>
+            </div>
+          </div>
+          <div id="route-empty" class="hidden" style="margin-top:64px;">
+            <h2 id="route-empty-heading">Route, day by day</h2>
+            <p style="color:var(--paper-dim);">This tour's day-by-day itinerary hasn't been published yet.</p>
+          </div>
+
+          <h2 style="margin-top:64px;">Your guide</h2>
+          <div class="guide-grid" id="tour-guides" style="grid-template-columns:1fr;"></div>
+          <p id="tour-guides-status" style="color:var(--paper-dim); font-size:14px;">Loading guide profile…</p>
+
+          <h2 id="levels" style="margin-top:64px;">Difficulty system</h2>
+          <p style="margin-bottom:8px;">Our five-level rating exists so nobody ends up on terrain beyond their ability. This trip sits at <span id="levels-current-label">—</span>.</p>
+          <div class="level-list" id="level-list">
+            <div class="level-row" data-level="1"><div><span class="level-tag">Level 1</span><h4>Explorer</h4></div><p class="level-desc">Easy to moderate riding on wide tracks. No technical skill required, moderate fitness.</p><div class="level-req">2–4 hrs/day<br>Up to 2,500m</div></div>
+            <div class="level-row" data-level="2"><div><span class="level-tag">Level 2</span><h4>Trail rider</h4></div><p class="level-desc">Intermediate singletrack with some loose or rocky sections. Comfortable climbing required.</p><div class="level-req">3–5 hrs/day<br>Up to 3,000m</div></div>
+            <div class="level-row" data-level="3"><div><span class="level-tag">Level 3</span><h4>Mountain rider</h4></div><p class="level-desc">Advanced terrain, sustained climbs, technical descents. Prior multi-day MTB experience expected.</p><div class="level-req">4–6 hrs/day<br>Up to 3,500m</div></div>
+            <div class="level-row" data-level="4"><div><span class="level-tag">Level 4</span><h4>Enduro</h4></div><p class="level-desc">Advanced to expert. Steep technical descents, long days, high fitness demand.</p><div class="level-req">5–6 hrs/day<br>Up to 4,000m</div></div>
+            <div class="level-row" data-level="5"><div><span class="level-tag">Level 5</span><h4>Himalayan expedition</h4></div><p class="level-desc">Expert riders only. Remote, high-altitude, multi-day terrain with real logistical commitment.</p><div class="level-req">6–7 hrs/day<br>4,000m+</div></div>
+          </div>
+
+          <h2 style="margin-top:64px;">Required equipment</h2>
+          <div class="ride-grid ride-grid-2col" id="tour-equipment-grid">
+            <div class="ride-cell"><h5>Essential</h5><ul id="tour-equipment-essential"><li>Loading…</li></ul></div>
+            <div class="ride-cell"><h5>Recommended</h5><ul id="tour-equipment-recommended"><li>Loading…</li></ul></div>
+          </div>
+
+          <h2 style="margin-top:64px;">Safety information</h2>
+          <div id="tour-safety"><p style="color:var(--paper-dim); font-size:14px;">Loading…</p></div>
+          <p style="font-size:13px;"><a href="safety-policy.html">Read our full safety policy &rarr;</a></p>
+
+          <h2 style="margin-top:64px;">Cancellation policy</h2>
+          <div id="tour-cancellation"><p style="color:var(--paper-dim); font-size:14px;">Loading…</p></div>
+          <p style="font-size:13px;"><a href="cancellation-policy.html">Read our full cancellation policy &rarr;</a></p>
+
+          <h2 style="margin-top:64px;">Rider reviews</h2>
+          <div id="tour-reviews" style="margin-top:20px;"><p style="color:var(--paper-dim); font-size:14px;">Loading reviews…</p></div>
+
+          <h2 id="trip-riders-heading" style="margin-top:64px;">Riders on this booking</h2>
+          <div class="dash-list" id="trip-riders"></div>
+        </div>
+
+        <aside class="book-card" id="book">
+          <div id="trip-sidebar-content"><p style="color:var(--paper-dim);">Loading…</p></div>
+        </aside>
+
+      </div>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <div class="footer-bottom">
+      <span>© 2026 High Route MTB, Kathmandu</span>
+      <span><a href="index.html">Back to the homepage</a></span>
+    </div>
+  </div>
+</footer>
+
+<script src="main.js"></script>
+</body>
+</html>

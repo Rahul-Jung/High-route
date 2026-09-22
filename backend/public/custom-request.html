@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Custom Request — High Route Ops</title>
+<style>
+  :root{
+    --ink:#15140F; --ink-soft:#1B1A13; --stone:#211F19; --stone2:#38352A; --paper:#F2EEE2; --dim:#C9C4B2;
+    --signal:#FF4E1F; --signal-2:#FF7A45; --glacier:#6FA0B8; --green:#7FBF6B; --amber:#E8B33D; --red:#D9534F;
+    --line:rgba(242,238,226,0.14); --line-soft:rgba(242,238,226,0.07);
+    --radius:10px; --radius-sm:6px;
+    --shadow-card:0 1px 2px rgba(0,0,0,0.3), 0 12px 28px -14px rgba(0,0,0,0.55);
+    --shadow-pop:0 20px 60px -18px rgba(0,0,0,0.7);
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; color:var(--paper); font-family:Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(1100px 620px at 14% -8%, rgba(255,78,31,0.10), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgba(111,160,184,0.08), transparent 55%),
+      var(--ink);
+    background-attachment:fixed;
+  }
+  input, select, button, textarea{ font-family:inherit; }
+  input, select, textarea{
+    background:var(--ink-soft); border:1px solid var(--line); color:var(--paper); padding:10px 12px; font-size:13px;
+    width:100%; border-radius:var(--radius-sm); transition:border-color .15s, box-shadow .15s;
+  }
+  input:focus, select:focus, textarea:focus{ outline:none; border-color:var(--signal); box-shadow:0 0 0 3px rgba(255,78,31,0.15); }
+  input:hover, select:hover{ border-color:rgba(242,238,226,0.28); }
+  input:disabled, select:disabled, textarea:disabled{ opacity:0.55; cursor:not-allowed; }
+  textarea{ resize:vertical; }
+  button{
+    background:linear-gradient(180deg, var(--signal-2), var(--signal)); border:0; color:var(--ink); font-weight:700;
+    padding:10px 18px; cursor:pointer; font-size:13px; letter-spacing:0.01em; border-radius:var(--radius-sm);
+    transition:filter .15s, transform .1s, box-shadow .15s; box-shadow:0 4px 14px -4px rgba(255,78,31,0.45);
+  }
+  button:hover{ filter:brightness(1.06); transform:translateY(-1px); box-shadow:0 8px 20px -6px rgba(255,78,31,0.55); }
+  button:active{ transform:translateY(0); }
+  button:disabled{ opacity:0.5; cursor:not-allowed; transform:none; box-shadow:none; }
+  button.ghost{ background:transparent; border:1px solid var(--line); color:var(--dim); box-shadow:none; }
+  button.ghost:hover{ color:var(--paper); border-color:var(--dim); filter:none; box-shadow:none; background:rgba(242,238,226,0.04); }
+  button.danger{ background:linear-gradient(180deg, #E06861, var(--red)); color:#fff; box-shadow:0 4px 14px -4px rgba(217,83,79,0.5); }
+  button.small{ padding:6px 12px; font-size:11px; border-radius:5px; }
+  a{ color:var(--glacier); }
+  ::-webkit-scrollbar{ width:10px; height:10px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{ background:var(--stone2); border-radius:6px; border:2px solid var(--ink); }
+  .hidden{ display:none !important; }
+
+  .topbar{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:20px 34px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .topbar .back{
+    font-size:12.5px; font-weight:600; color:var(--dim); text-decoration:none; display:inline-flex; align-items:center; gap:7px;
+    padding:8px 14px 8px 11px; border:1px solid var(--line); border-radius:20px; background:rgba(242,238,226,0.03);
+    transition:color .15s, border-color .15s, background .15s, transform .1s; margin-bottom:10px;
+  }
+  .topbar .back .arrow{ font-size:15px; line-height:1; transition:transform .15s; }
+  .topbar .back:hover{ color:var(--paper); border-color:var(--dim); background:rgba(242,238,226,0.07); }
+  .topbar .back:hover .arrow{ transform:translateX(-3px); }
+  .topbar .back:active{ transform:translateY(1px); }
+  .topbar h1{ font-size:18px; margin:2px 0 0; text-transform:uppercase; letter-spacing:0.02em; }
+  .status-pill{ font-family:monospace; font-size:11px; text-transform:uppercase; letter-spacing:0.03em; padding:5px 12px; border-radius:20px; border:1px solid currentColor; }
+
+  main{ max-width:1080px; margin:0 auto; padding:30px 34px 100px; }
+  .card{
+    background:linear-gradient(160deg, var(--stone), var(--ink-soft)); border:1px solid var(--line); padding:24px;
+    margin-bottom:26px; border-radius:var(--radius); box-shadow:var(--shadow-card);
+  }
+  .card h3{ font-size:12px; text-transform:uppercase; color:var(--dim); margin:0 0 18px; letter-spacing:0.05em; display:flex; align-items:center; gap:8px; }
+  .card h3::before{ content:''; width:3px; height:12px; background:var(--signal); border-radius:2px; display:inline-block; }
+  .card h3.glacier::before{ background:var(--glacier); }
+  .grid3{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .grid3 label, .grid2 label{ display:block; font-size:11px; color:var(--dim); margin-bottom:6px; }
+  .full{ grid-column:1/-1; }
+  .field-note{ font-size:11px; color:var(--dim); margin-top:4px; line-height:1.5; }
+  .req-facts{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; font-size:13px; margin-bottom:16px; }
+  .req-facts div span{ display:block; color:var(--dim); font-size:10.5px; text-transform:uppercase; letter-spacing:0.03em; margin-bottom:4px; }
+  .pills{ display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+  .pill{ font-size:11px; background:rgba(242,238,226,0.06); border:1px solid var(--line); border-radius:20px; padding:4px 11px; color:var(--dim); }
+
+  .banner{ font-size:13px; color:var(--dim); line-height:1.6; padding:14px 16px; border-radius:8px; background:rgba(242,238,226,0.03); border-left:3px solid var(--line); margin-bottom:20px; }
+  .banner.draft{ border-left-color:var(--dim); }
+  .banner.live{ border-left-color:var(--glacier); }
+  .banner.done{ border-left-color:var(--green); }
+  .banner.bad{ border-left-color:var(--red); }
+
+  /* tour reference preview — deliberately visually distinct from the
+     proposal's own editable fields, so it always reads as "facts about the
+     base tour", never mistaken for "what we're promising this customer". */
+  .tour-ref{ border:1px dashed var(--line); border-radius:10px; padding:18px 20px; margin-bottom:22px; background:rgba(111,160,184,0.04); }
+  .tour-ref-tag{ font-size:10px; text-transform:uppercase; letter-spacing:0.05em; color:var(--glacier); margin-bottom:10px; }
+  .tour-ref-head{ display:flex; gap:16px; margin-bottom:12px; }
+  .tour-ref-head img{ width:120px; height:88px; object-fit:cover; border-radius:8px; flex-shrink:0; background:var(--stone2); }
+  .tour-ref-head h4{ font-size:16px; margin:0 0 8px; text-transform:uppercase; }
+  .tour-ref-stats{ display:flex; flex-wrap:wrap; gap:4px 16px; font-size:12px; color:var(--dim); font-family:monospace; }
+  .tour-ref p.summary{ font-size:13px; color:var(--dim); line-height:1.6; margin:10px 0; }
+  .tour-ref-cols{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:14px; }
+  .tour-ref-cols h6{ font-size:10.5px; text-transform:uppercase; color:var(--dim); margin:0 0 6px; }
+  .tour-ref-cols ul{ margin:0; padding-left:16px; font-size:12.5px; color:var(--dim); line-height:1.7; }
+  .itinerary-list{ margin-top:14px; }
+  .itinerary-day{ display:flex; gap:10px; font-size:12.5px; padding:7px 0; border-bottom:1px solid var(--line-soft); color:var(--dim); }
+  .itinerary-day b{ color:var(--paper); flex-shrink:0; width:52px; }
+  .tour-ref a.view-full{ font-size:12px; display:inline-block; margin-top:10px; }
+
+  .form-actions{ display:flex; gap:10px; align-items:center; margin-top:18px; flex-wrap:wrap; }
+  .err-text{ color:var(--red); font-size:12.5px; min-height:16px; margin-top:8px; }
+
+  .version-card{ border:1px solid var(--line); border-radius:8px; padding:14px 16px; margin-bottom:10px; font-size:12.5px; }
+  .version-card .vhead{ display:flex; justify-content:space-between; margin-bottom:4px; }
+  .version-card .vmeta{ color:var(--dim); }
+  .version-card .vmsg{ margin-top:6px; color:var(--paper); }
+
+  .event-row{ border-left:2px solid var(--line); padding-left:12px; margin-bottom:12px; font-size:12.5px; }
+  .event-row .emeta{ color:var(--dim); margin-top:2px; }
+
+  #toast-stack{ position:fixed; top:18px; right:18px; z-index:900; display:flex; flex-direction:column; gap:12px; max-width:370px; pointer-events:none; }
+  .toast-card{
+    display:flex; align-items:flex-start; gap:12px; padding:15px 18px 14px; border-radius:12px; font-size:13px; line-height:1.55;
+    background:linear-gradient(160deg, var(--stone), var(--ink-soft)); border:1px solid var(--line); box-shadow:var(--shadow-pop);
+    border-left:4px solid var(--dim); color:var(--paper); cursor:pointer; pointer-events:auto; position:relative; overflow:hidden;
+    animation:toast-in .42s cubic-bezier(.34,1.56,.64,1);
+  }
+  .toast-card.leaving{ animation:toast-out .28s cubic-bezier(.4,0,1,1) forwards; }
+  .toast-card .toast-ic{ flex-shrink:0; width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:800; color:var(--ink); }
+  .toast-card .toast-msg{ padding-top:3px; }
+  .toast-card .toast-progress{ position:absolute; left:0; bottom:0; height:3px; width:100%; background:currentColor; opacity:0.55; transform-origin:left; animation-name:toast-progress; animation-timing-function:linear; animation-fill-mode:forwards; }
+  .toast-card.success{ border-left-color:var(--green); } .toast-card.success .toast-ic{ background:var(--green); }
+  .toast-card.error{ border-left-color:var(--red); } .toast-card.error .toast-ic{ background:var(--red); color:#fff; }
+  .toast-card.warning{ border-left-color:var(--amber); } .toast-card.warning .toast-ic{ background:var(--amber); }
+  .toast-card.info{ border-left-color:var(--glacier); } .toast-card.info .toast-ic{ background:var(--glacier); }
+  @keyframes toast-in{ from{ opacity:0; transform:translateX(30px) scale(.9); } to{ opacity:1; transform:none; } }
+  @keyframes toast-out{ from{ opacity:1; transform:none; max-height:140px; margin-bottom:12px; } to{ opacity:0; transform:translateX(30px) scale(.94); max-height:0; margin-bottom:0; } }
+  @keyframes toast-progress{ from{ transform:scaleX(1); } to{ transform:scaleX(0); } }
+
+  @media (max-width:760px){
+    main{ padding:20px 16px 80px; }
+    .grid3, .req-facts{ grid-template-columns:1fr 1fr; }
+    .grid2, .tour-ref-cols{ grid-template-columns:1fr; }
+    .tour-ref-head{ flex-direction:column; }
+  }
+</style>
+</head>
+<body>
+
+<div id="toast-stack" aria-live="polite"></div>
+
+<div class="topbar">
+  <div>
+    <a href="admin.html#crm" class="back"><span class="arrow">&larr;</span> Back to CRM</a>
+    <h1 id="page-title">Custom request</h1>
+  </div>
+  <span class="status-pill" id="request-status-pill">—</span>
+</div>
+
+<main id="app">
+
+  <div class="card">
+    <h3>Customer & request</h3>
+    <div class="req-facts">
+      <div><span>Requested by</span><b id="f-name">—</b><div id="f-email" style="color:var(--dim); font-size:12px;"></div></div>
+      <div><span>Submitted</span><b id="f-submitted">—</b></div>
+      <div><span>Preferred date</span><b id="f-preferred-date">—</b></div>
+      <div><span>Group size</span><b id="f-groupsize">—</b></div>
+      <div><span>Duration wanted</span><b id="f-duration">—</b></div>
+      <div><span>Riding style</span><b id="f-style">—</b></div>
+      <div><span>Experience</span><b id="f-experience">—</b></div>
+      <div><span>Budget</span><b id="f-budget">—</b></div>
+    </div>
+    <div id="f-preferences-wrap" class="hidden"><span style="font-size:10.5px; color:var(--dim); text-transform:uppercase;">Priorities</span><div class="pills" id="f-preferences"></div></div>
+    <div style="margin-top:16px;">
+      <label style="display:block; font-size:11px; color:var(--dim); margin-bottom:6px;">Internal notes (never shown to the customer)</label>
+      <textarea id="f-internal-notes" rows="2"></textarea>
+      <!-- Status itself is never hand-picked here — see the CRM_MANUAL_ACTIONS
+           comment below for why. The pill at the top of the page already shows
+           it read-only; these buttons are the only three manual transitions
+           that legitimately exist outside the proposal/payment lifecycle. -->
+      <div class="form-actions">
+        <button class="small" onclick="saveInternalNotes()">Save notes</button>
+        <button class="small ghost hidden" id="f-mark-contacted" onclick="markContacted()">Mark contacted</button>
+        <button class="small ghost hidden" id="f-mark-completed" onclick="markCompleted()">Mark completed</button>
+        <button class="small danger hidden" id="f-cancel-request" onclick="cancelRequest()">Cancel request</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Proposal</h3>
+    <div id="proposal-banner" class="banner">Loading…</div>
+
+    <div id="proposal-form-wrap">
+      <div class="grid3">
+        <div class="full">
+          <label>Base tour <span style="color:var(--red);">*</span></label>
+          <select id="p-tour"><option value="">Loading tours…</option></select>
+          <div class="field-note">Every proposal starts from a real tour in the catalogue — its details are fetched below for reference. Duration and price are yours to adjust.</div>
+        </div>
+      </div>
+
+      <div id="tour-ref" class="tour-ref hidden"></div>
+
+      <div class="grid3" style="margin-top:4px;">
+        <div><label>Start date <span style="color:var(--red);">*</span></label><input id="p-start-date" type="date"></div>
+        <div><label>Duration (days)</label><input id="p-duration" type="number" min="1"></div>
+        <div><label>Deposit (%)</label><input id="p-deposit-pct" type="number" min="1" max="100" value="20"></div>
+        <div><label>Total price (€)</label><input id="p-price" type="number" step="0.01" min="0"></div>
+        <div><label>Proposal expires</label><input id="p-expires" type="date"></div>
+        <div class="field-note" style="align-self:end; padding-bottom:10px;">The base tour's price above is a "from" per-person rate — check the requested group size before setting a total.</div>
+      </div>
+      <div class="grid2" style="margin-top:2px;">
+        <div class="full"><label>Riding details</label><textarea id="p-riding" rows="2" placeholder="Distance, elevation, difficulty, riding style for this specific itinerary..."></textarea></div>
+        <div><label>Accommodation</label><textarea id="p-accommodation" rows="2"></textarea></div>
+        <div><label>Transport</label><textarea id="p-transport" rows="2"></textarea></div>
+        <div><label>Inclusions (one per line)</label><textarea id="p-inclusions" rows="5"></textarea></div>
+        <div><label>Exclusions (one per line)</label><textarea id="p-exclusions" rows="5"></textarea></div>
+        <div class="full"><label>Notes to customer</label><textarea id="p-notes" rows="2" placeholder="A cover note shown alongside the itinerary..."></textarea></div>
+      </div>
+      <div class="err-text" id="proposal-error"></div>
+      <div class="form-actions" id="proposal-actions"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="glacier">Version history</h3>
+    <div id="version-list"><p style="color:var(--dim); font-size:13px;">Loading…</p></div>
+  </div>
+
+  <div class="card">
+    <h3 class="glacier">Audit trail</h3>
+    <div id="event-list"><p style="color:var(--dim); font-size:13px;">Loading…</p></div>
+  </div>
+
+</main>
+
+<script>
+const API = window.HIGHROUTE_API_BASE || 'http://localhost:4000';
+const FRONTEND = window.HIGHROUTE_FRONTEND_BASE || 'http://localhost:8080';
+
+function esc(v){ return String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c])); }
+function money(c){ return (c/100).toLocaleString(undefined, { style:'currency', currency:'EUR' }); }
+function linesToArray(text){ return text.split('\n').map(s => s.trim()).filter(Boolean); }
+function arrayToLines(arr){ return (arr || []).join('\n'); }
+
+function getToken(){ return localStorage.getItem('hr_admin_token'); }
+if(!getToken()){ location.href = 'admin.html'; }
+
+async function api(path){
+  const res = await fetch(API + path, { headers: { Authorization: 'Bearer ' + getToken() } });
+  if(res.status === 401){ localStorage.removeItem('hr_admin_token'); location.href = 'admin.html'; throw new Error('Unauthorized'); }
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+async function apiSend(path, method, body){
+  const res = await fetch(API + path, {
+    method, headers:{ 'Content-Type':'application/json', Authorization:'Bearer ' + getToken() },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if(!res.ok) throw new Error(data.error || res.statusText);
+  return data;
+}
+
+const TOAST_ICON = { success:'✓', error:'✕', warning:'⚠', info:'ℹ' };
+function showToast(message, type){
+  type = TOAST_ICON[type] ? type : 'error';
+  const stack = document.getElementById('toast-stack');
+  const card = document.createElement('div');
+  card.className = 'toast-card ' + type;
+  card.innerHTML = `<span class="toast-ic">${TOAST_ICON[type]}</span><span class="toast-msg">${esc(message)}</span><div class="toast-progress" style="animation-duration:6000ms;"></div>`;
+  stack.appendChild(card);
+  card.addEventListener('click', () => card.remove());
+  setTimeout(() => { card.classList.add('leaving'); setTimeout(() => card.remove(), 280); }, 6000);
+}
+
+const STATUS_COLOR = {
+  new:'var(--amber)', contacted:'var(--glacier)', proposal_sent:'var(--glacier)', approved:'var(--green)',
+  deposit:'var(--glacier)', confirmed:'var(--green)', completed:'var(--green)', declined:'var(--red)', cancelled:'var(--red)',
+};
+const PROPOSAL_STATUS_COLOR = {
+  draft:'var(--dim)', sent:'var(--glacier)', approved:'var(--green)', declined:'var(--red)',
+  changes_requested:'var(--amber)', expired:'var(--red)', withdrawn:'var(--red)', superseded:'var(--dim)',
+};
+
+const params = new URLSearchParams(location.search);
+const requestId = Number(params.get('id'));
+if(!requestId){ document.getElementById('app').innerHTML = '<div class="card">No request id given — <a href="admin.html#crm">go back to the CRM</a>.</div>'; throw new Error('no id'); }
+
+let reqData = null;
+let toursCache = [];
+let versionHistory = [];
+let currentDraft = null; // the active proposal, if its status is 'draft'
+
+async function boot(){
+  try {
+    const [reqResult, toursResult] = await Promise.all([
+      api('/api/admin/custom-requests/' + requestId),
+      fetch(API + '/api/tours').then(r => r.json()),
+    ]);
+    reqData = reqResult;
+    toursCache = toursResult.tours;
+    renderRequestFacts();
+    populateTourSelect();
+    await loadVersionsAndBuildForm();
+    loadEvents();
+  } catch(err) {
+    document.getElementById('app').innerHTML = `<div class="card">Could not load this request: ${esc(err.message)}</div>`;
+  }
+}
+
+function renderRequestFacts(){
+  document.getElementById('page-title').textContent = 'Custom request #' + reqData.id;
+  const pill = document.getElementById('request-status-pill');
+  pill.textContent = reqData.status.replace('_',' ');
+  pill.style.color = STATUS_COLOR[reqData.status] || 'var(--dim)';
+
+  document.getElementById('f-name').textContent = reqData.rider_name || reqData.name || 'Guest';
+  document.getElementById('f-email').textContent = reqData.rider_email || reqData.email || '';
+  document.getElementById('f-submitted').textContent = (reqData.created_at || '').slice(0, 10);
+  document.getElementById('f-preferred-date').textContent = reqData.preferred_date || 'Not specified';
+  document.getElementById('f-groupsize').textContent = reqData.group_size || '—';
+  document.getElementById('f-duration').textContent = reqData.duration_bucket || '—';
+  document.getElementById('f-style').textContent = reqData.riding_style || '—';
+  document.getElementById('f-experience').textContent = reqData.experience || '—';
+  document.getElementById('f-budget').textContent = reqData.budget || '—';
+  document.getElementById('f-internal-notes').value = reqData.internal_notes || '';
+
+  if(reqData.preferences && reqData.preferences.length){
+    document.getElementById('f-preferences-wrap').classList.remove('hidden');
+    document.getElementById('f-preferences').innerHTML = reqData.preferences.map(p => `<span class="pill">${esc(p)}</span>`).join('');
+  }
+
+  // Status is a live reflection of what the customer and the proposal
+  // actually did (sent/approved/declined/paid — see routes/proposals.js),
+  // never an admin's free choice. Only these three manual transitions
+  // legitimately exist outside that lifecycle, each shown only when it
+  // actually applies right now.
+  const CRM_TERMINAL_STATUSES = ['completed', 'declined', 'cancelled'];
+  document.getElementById('f-mark-contacted').classList.toggle('hidden', reqData.status !== 'new');
+  document.getElementById('f-mark-completed').classList.toggle('hidden', !(reqData.status === 'confirmed' && reqData.booking_id));
+  // Once a real booking exists, cancellation has to go through the Bookings
+  // tab instead (proper refund, seat release) — see the guard on
+  // POST /api/custom-requests/:id/cancel.
+  document.getElementById('f-cancel-request').classList.toggle('hidden', CRM_TERMINAL_STATUSES.includes(reqData.status) || !!reqData.booking_id);
+}
+
+async function saveInternalNotes(){
+  try {
+    await apiSend('/api/admin/custom-requests/' + requestId, 'PATCH', { internalNotes: document.getElementById('f-internal-notes').value });
+    showToast('Notes saved.', 'success');
+  } catch(err){ showToast(err.message, 'error'); }
+}
+async function markContacted(){
+  try {
+    reqData = await apiSend('/api/admin/custom-requests/' + requestId, 'PATCH', { status: 'contacted' });
+    renderRequestFacts(); showToast('Marked contacted.', 'success'); loadEvents();
+  } catch(err){ showToast(err.message, 'error'); }
+}
+async function markCompleted(){
+  try {
+    reqData = await apiSend('/api/admin/custom-requests/' + requestId, 'PATCH', { status: 'completed' });
+    renderRequestFacts(); showToast('Marked completed.', 'success'); loadEvents();
+  } catch(err){ showToast(err.message, 'error'); }
+}
+async function cancelRequest(){
+  if(!confirm('Cancel this request? This cannot be undone from here.')) return;
+  try {
+    await apiSend('/api/custom-requests/' + requestId + '/cancel', 'POST', {});
+    reqData = await api('/api/admin/custom-requests/' + requestId);
+    renderRequestFacts(); showToast('Request cancelled.', 'success'); loadEvents();
+  } catch(err){ showToast(err.message, 'error'); }
+}
+
+function populateTourSelect(){
+  const select = document.getElementById('p-tour');
+  select.innerHTML = '<option value="">Select a tour…</option>' +
+    toursCache.map(t => `<option value="${t.id}" data-slug="${esc(t.slug)}">${esc(t.name)}${t.region ? ' — ' + esc(t.region) : ''}</option>`).join('');
+  select.addEventListener('change', () => onTourSelected(true));
+}
+
+/** Fetches and renders the full tour-detail data for whichever tour is
+ *  selected, clearly labeled as reference material — never confused with
+ *  the proposal's own (editable) fields just below it. `fillEmpty` controls
+ *  whether empty proposal fields get pre-filled from this tour's own
+ *  numbers — true when the admin actively changes the dropdown, so a
+ *  freshly-picked tour's duration/price/inclusions become sensible
+ *  defaults without ever overwriting something the admin already typed. */
+let lastFetchedSlug = null;
+async function onTourSelected(fillEmpty){
+  const select = document.getElementById('p-tour');
+  const opt = select.selectedOptions[0];
+  const refBox = document.getElementById('tour-ref');
+  if(!opt || !opt.value){ refBox.classList.add('hidden'); refBox.innerHTML = ''; lastFetchedSlug = null; return; }
+  const slug = opt.dataset.slug;
+  if(slug === lastFetchedSlug) return;
+  lastFetchedSlug = slug;
+  refBox.classList.remove('hidden');
+  refBox.innerHTML = '<div class="tour-ref-tag">BASE TOUR REFERENCE — for your context, not sent to the customer as-is</div><p style="color:var(--dim); font-size:13px;">Loading tour details…</p>';
+  let tour;
+  try { tour = await fetch(API + '/api/tours/' + encodeURIComponent(slug)).then(r => r.json()); }
+  catch(e) { refBox.innerHTML = '<div class="tour-ref-tag">BASE TOUR REFERENCE</div><p style="color:var(--red); font-size:13px;">Could not load tour details.</p>'; return; }
+
+  const days = tour.days || [];
+  const dayList = days.length
+    ? `<div class="itinerary-list"><h6 style="font-size:10.5px; text-transform:uppercase; color:var(--dim); margin:0 0 6px;">Day-by-day (${days.length} days)</h6>` +
+      days.map(d => `<div class="itinerary-day"><b>Day ${d.day_number}</b><span>${esc(d.title)} — ${d.distance_km}km, ${d.elevation_gain_m}m gain, ${esc(d.terrain)}</span></div>`).join('') + `</div>`
+    : '';
+  const gallery = (tour.gallery || []).slice(0, 6);
+  const galleryHtml = gallery.length
+    ? `<div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">${gallery.map(g => `<img src="${esc(g.image_url)}" alt="" style="width:76px; height:56px; object-fit:cover; border-radius:6px;">`).join('')}</div>` : '';
+
+  refBox.innerHTML = `
+    <div class="tour-ref-tag">BASE TOUR REFERENCE — for your context, not sent to the customer as-is</div>
+    <div class="tour-ref-head">
+      ${tour.image_url ? `<img src="${esc(tour.image_url)}" alt="">` : ''}
+      <div>
+        <h4>${esc(tour.name)}</h4>
+        <div class="tour-ref-stats">
+          <span>${esc(tour.region || '')}</span><span>${tour.duration_days} days</span><span>Level ${tour.difficulty_level}/5</span>
+          <span>${tour.distance_km} km</span><span>${tour.elevation_gain_m}m gain</span><span>Max ${tour.max_altitude_m}m alt.</span>
+          <span>From ${money(tour.price_from_cents)}/person</span><span>Group ${tour.group_size_min}–${tour.group_size_max}</span>
+        </div>
+      </div>
+    </div>
+    <p class="summary">${esc(tour.summary || '')}</p>
+    <div class="tour-ref-cols">
+      <div><h6>Tour's own inclusions</h6><ul>${(tour.inclusions||[]).map(i=>`<li>${esc(i)}</li>`).join('') || '<li>Not specified</li>'}</ul></div>
+      <div><h6>Tour's own exclusions</h6><ul>${(tour.exclusions||[]).map(i=>`<li>${esc(i)}</li>`).join('') || '<li>Not specified</li>'}</ul></div>
+    </div>
+    ${dayList}
+    ${galleryHtml}
+    <a class="view-full" href="${FRONTEND}/tour-detail.html?slug=${encodeURIComponent(tour.slug)}" target="_blank" rel="noopener">Open full tour page &rarr;</a>
+  `;
+
+  if(fillEmpty){
+    const durationEl = document.getElementById('p-duration');
+    const priceEl = document.getElementById('p-price');
+    const inclEl = document.getElementById('p-inclusions');
+    const exclEl = document.getElementById('p-exclusions');
+    if(!durationEl.value) durationEl.value = tour.duration_days;
+    if(!priceEl.value) priceEl.value = (tour.price_from_cents / 100).toFixed(2);
+    if(!inclEl.value.trim() && (tour.inclusions||[]).length) inclEl.value = arrayToLines(tour.inclusions);
+    if(!exclEl.value.trim() && (tour.exclusions||[]).length) exclEl.value = arrayToLines(tour.exclusions);
+  }
+}
+
+/** seedTourId (only used when p is null): the customer's own originally-
+ *  requested tour (reqData.tour_id), pre-selected as a starting point for a
+ *  brand-new proposal — still just a suggestion the admin can change, never
+ *  assumed to be the final answer. */
+function fillProposalForm(p, seedTourId){
+  document.getElementById('p-tour').value = p && p.tour_id ? p.tour_id : (seedTourId || '');
+  document.getElementById('p-start-date').value = p && p.start_date ? p.start_date : '';
+  document.getElementById('p-duration').value = p && p.duration_days ? p.duration_days : '';
+  document.getElementById('p-price').value = p ? (p.price_cents / 100).toFixed(2) : '';
+  document.getElementById('p-deposit-pct').value = p ? p.deposit_percent : 20;
+  document.getElementById('p-expires').value = p && p.expires_at ? p.expires_at : '';
+  document.getElementById('p-riding').value = p && p.riding_details ? p.riding_details : '';
+  document.getElementById('p-accommodation').value = p && p.accommodation ? p.accommodation : '';
+  document.getElementById('p-transport').value = p && p.transport ? p.transport : '';
+  document.getElementById('p-inclusions').value = p ? arrayToLines(p.inclusions) : '';
+  document.getElementById('p-exclusions').value = p ? arrayToLines(p.exclusions) : '';
+  document.getElementById('p-notes').value = p && p.notes ? p.notes : '';
+  lastFetchedSlug = null; // force the reference panel to (re)render for this proposal's tour
+  if(document.getElementById('p-tour').value) onTourSelected(!p);
+  else { document.getElementById('tour-ref').classList.add('hidden'); document.getElementById('tour-ref').innerHTML = ''; }
+}
+function readProposalForm(){
+  const tourId = document.getElementById('p-tour').value;
+  return {
+    tourId: tourId ? Number(tourId) : null,
+    startDate: document.getElementById('p-start-date').value || null,
+    durationDays: document.getElementById('p-duration').value ? Number(document.getElementById('p-duration').value) : null,
+    priceCents: document.getElementById('p-price').value ? Math.round(Number(document.getElementById('p-price').value) * 100) : null,
+    depositPercent: Number(document.getElementById('p-deposit-pct').value) || 20,
+    expiresAt: document.getElementById('p-expires').value || null,
+    ridingDetails: document.getElementById('p-riding').value.trim() || null,
+    accommodation: document.getElementById('p-accommodation').value.trim() || null,
+    transport: document.getElementById('p-transport').value.trim() || null,
+    inclusions: linesToArray(document.getElementById('p-inclusions').value),
+    exclusions: linesToArray(document.getElementById('p-exclusions').value),
+    notes: document.getElementById('p-notes').value.trim() || null,
+  };
+}
+function setFormDisabled(disabled){
+  ['p-tour','p-start-date','p-duration','p-price','p-deposit-pct','p-expires','p-riding','p-accommodation','p-transport','p-inclusions','p-exclusions','p-notes']
+    .forEach(id => document.getElementById(id).disabled = disabled);
+}
+
+async function loadVersionsAndBuildForm(){
+  const data = await api('/api/custom-requests/' + requestId + '/proposals');
+  versionHistory = data.proposals;
+  const active = versionHistory[versionHistory.length - 1] || null;
+  currentDraft = active && active.status === 'draft' ? active : null;
+
+  const banner = document.getElementById('proposal-banner');
+  const actions = document.getElementById('proposal-actions');
+  const formWrap = document.getElementById('proposal-form-wrap');
+  document.getElementById('proposal-error').textContent = '';
+
+  if(reqData.booking_id){
+    // Real money and a real departure exist against these exact terms now
+    // (see createBookingForConfirmedProposal in routes/proposals.js) — the
+    // proposal is frozen server-side too, so don't offer an editable form
+    // that would just be rejected. Point at the tools that now own this.
+    formWrap.classList.add('hidden');
+    banner.className = 'banner done';
+    banner.innerHTML = `This request is <b>fulfilled</b> — booking <b>${esc(reqData.booking_reference)}</b> and its departure were created automatically the moment the deposit was paid.` +
+      `<br>The proposal is now frozen. Manage dates or the assigned guide from the <b>Departures</b> tab, and payments, cancellation or refunds from the <b>Bookings</b> tab.`;
+    actions.innerHTML = '';
+    document.getElementById('version-list').innerHTML = versionHistory.length
+      ? versionHistory.slice().reverse().map(p => `
+        <div class="version-card">
+          <div class="vhead"><b>v${p.version} — ${esc(p.destination)}</b><span style="color:${PROPOSAL_STATUS_COLOR[p.status] || 'var(--dim)'};">${esc(p.status.replace('_',' '))}</span></div>
+          <div class="vmeta">${money(p.price_cents)} · ${p.duration_days ? p.duration_days + ' days' : 'duration TBC'}${p.start_date ? ' · from ' + esc(p.start_date) : ''}</div>
+        </div>`).join('')
+      : '<p style="color:var(--dim); font-size:13px;">No versions yet.</p>';
+    return;
+  }
+  formWrap.classList.remove('hidden');
+
+  if(!active){
+    banner.className = 'banner';
+    banner.textContent = reqData.tour_id
+      ? 'No proposal yet — the base tour below is pre-selected from what the customer originally asked for; adjust anything, then save it as a draft.'
+      : 'No proposal yet — pick a base tour below and fill in the details, then save it as a draft.';
+    fillProposalForm(null, reqData.tour_id);
+    setFormDisabled(false);
+  } else if(currentDraft){
+    banner.className = 'banner draft';
+    banner.innerHTML = `Version ${currentDraft.version} is a <b>draft</b> — not visible to the customer until you send it.`;
+    fillProposalForm(currentDraft);
+    setFormDisabled(false);
+  } else {
+    const cls = active.status === 'declined' || active.status === 'expired' || active.status === 'withdrawn' ? 'bad'
+      : active.status === 'approved' ? 'done' : 'live';
+    const respMsg = active.customer_response_message ? `<br>Customer said: &ldquo;${esc(active.customer_response_message)}&rdquo;` : '';
+    // Approved-but-unbooked means the customer accepted the offer but hasn't
+    // paid the deposit through custom-checkout.html yet — the only way that
+    // happens is if they're paying outside the platform (bank transfer, cash,
+    // a card charged over the phone), which is exactly what the "Record
+    // payment" button below is for.
+    const paidSoFar = active.status === 'approved'
+      ? `<br>${money(reqData.amount_paid_cents)} of ${money(active.price_cents)} recorded so far` +
+        (reqData.amount_paid_cents > 0 ? ` — remaining balance ${money(active.price_cents - reqData.amount_paid_cents)}.` : '.') +
+        ` The deposit due is ${money(Math.round(active.price_cents * active.deposit_percent / 100))} (${active.deposit_percent}%).`
+      : '';
+    banner.className = 'banner ' + cls;
+    banner.innerHTML = `Version ${active.version} is <b style="color:${PROPOSAL_STATUS_COLOR[active.status]};">${esc(active.status.replace('_',' '))}</b>` +
+      (active.sent_at ? ` — sent ${esc(active.sent_at.slice(0,10))}` : '') + respMsg + paidSoFar +
+      `<br><span style="opacity:0.85;">This version is frozen. Filling in the form below and saving starts a new version — the customer's already-seen offer never changes under them.</span>`;
+    fillProposalForm(active);
+    setFormDisabled(false);
+  }
+
+  const btns = [];
+  if(currentDraft){
+    btns.push(`<button onclick="saveProposal(${currentDraft.id})">Save changes</button>`);
+    btns.push(`<button onclick="sendProposal(${currentDraft.id})">Send to customer</button>`);
+  } else {
+    btns.push(`<button onclick="saveProposal(null)">${active ? 'Save as new version' : 'Save as draft'}</button>`);
+  }
+  if(active && active.status === 'approved' && !reqData.booking_id){
+    btns.push(`<button class="ghost" onclick="recordProposalPayment()">Record payment received</button>`);
+  }
+  if(active && ['sent','approved','changes_requested'].includes(active.status)){
+    btns.push(`<button class="danger" onclick="withdrawProposal(${active.id})">Withdraw current offer</button>`);
+  }
+  actions.innerHTML = btns.join('');
+
+  document.getElementById('version-list').innerHTML = versionHistory.length
+    ? versionHistory.slice().reverse().map(p => `
+      <div class="version-card">
+        <div class="vhead"><b>v${p.version} — ${esc(p.destination)}</b><span style="color:${PROPOSAL_STATUS_COLOR[p.status] || 'var(--dim)'};">${esc(p.status.replace('_',' '))}</span></div>
+        <div class="vmeta">${money(p.price_cents)} · ${p.duration_days ? p.duration_days + ' days' : 'duration TBC'}${p.start_date ? ' · from ' + esc(p.start_date) : ''}${p.expires_at ? ' · expires ' + esc(p.expires_at) : ''}</div>
+        ${p.customer_response_message ? `<div class="vmsg">&ldquo;${esc(p.customer_response_message)}&rdquo;</div>` : ''}
+      </div>`).join('')
+    : '<p style="color:var(--dim); font-size:13px;">No versions yet.</p>';
+}
+
+async function saveProposal(existingDraftId){
+  const body = readProposalForm();
+  const errEl = document.getElementById('proposal-error');
+  errEl.textContent = '';
+  if(!body.tourId){ errEl.textContent = 'Pick a base tour from the dropdown.'; return; }
+  if(!body.priceCents){ errEl.textContent = 'Total price is required.'; return; }
+  try {
+    if(existingDraftId) await apiSend('/api/admin/proposals/' + existingDraftId, 'PATCH', body);
+    else await apiSend('/api/admin/custom-requests/' + requestId + '/proposals', 'POST', body);
+    showToast('Proposal saved.', 'success');
+    reqData = await api('/api/admin/custom-requests/' + requestId);
+    renderRequestFacts();
+    await loadVersionsAndBuildForm();
+  } catch(err) { errEl.textContent = err.message; showToast(err.message, 'error'); }
+}
+async function sendProposal(proposalId){
+  try {
+    await apiSend('/api/admin/proposals/' + proposalId + '/send', 'POST');
+    showToast('Proposal sent to the customer.', 'success');
+    reqData = await api('/api/admin/custom-requests/' + requestId);
+    renderRequestFacts();
+    await loadVersionsAndBuildForm();
+    loadEvents();
+  } catch(err) { showToast(err.message, 'error'); }
+}
+/** For a trip whose customer paid outside the platform (bank transfer, cash,
+ *  a card charged over the phone) instead of through custom-checkout.html —
+ *  see PATCH /api/admin/custom-requests/:id/payment. Reaching the deposit
+ *  threshold creates the real booking/departure automatically, same as the
+ *  customer's own payment would. */
+async function recordProposalPayment(){
+  const active = versionHistory[versionHistory.length - 1];
+  const remainingCents = active.price_cents - reqData.amount_paid_cents;
+  const suggestion = (remainingCents / 100).toFixed(2);
+  const input = prompt('Amount received, in EUR (remaining balance: ' + money(remainingCents) + '):', suggestion);
+  if(!input) return;
+  const amountCents = Math.round(Number(input) * 100);
+  if(!(amountCents > 0)){ showToast('Enter a positive amount.', 'warning'); return; }
+  try {
+    const result = await apiSend('/api/admin/custom-requests/' + requestId + '/payment', 'PATCH', { amountCents });
+    showToast(result.booking_id ? 'Payment recorded — deposit met, trip is now booked.' : 'Payment recorded.', 'success');
+    reqData = await api('/api/admin/custom-requests/' + requestId);
+    renderRequestFacts();
+    await loadVersionsAndBuildForm();
+    loadEvents();
+  } catch(err) { showToast(err.message, 'error'); }
+}
+async function withdrawProposal(proposalId){
+  if(!confirm('Withdraw this offer? The customer will no longer be able to approve, decline or pay it.')) return;
+  try {
+    await apiSend('/api/admin/proposals/' + proposalId + '/withdraw', 'POST');
+    showToast('Proposal withdrawn.', 'success');
+    reqData = await api('/api/admin/custom-requests/' + requestId);
+    renderRequestFacts();
+    await loadVersionsAndBuildForm();
+    loadEvents();
+  } catch(err) { showToast(err.message, 'error'); }
+}
+
+async function loadEvents(){
+  const list = document.getElementById('event-list');
+  try {
+    const data = await api('/api/admin/custom-requests/' + requestId + '/events');
+    list.innerHTML = data.events.length ? data.events.map(e => `
+      <div class="event-row">
+        <div><b>${esc(e.event_type.replace(/_/g,' '))}</b> ${e.from_status || e.to_status ? `— ${esc(e.from_status||'?')} &rarr; ${esc(e.to_status||'?')}` : ''}</div>
+        <div class="emeta">${esc(e.actor_type)}${e.actor_id ? ' #' + e.actor_id : ''} · ${esc(e.created_at)}</div>
+        ${e.message ? `<div style="margin-top:2px;">${esc(e.message)}</div>` : ''}
+      </div>`).join('') : '<p style="color:var(--dim); font-size:13px;">No events recorded.</p>';
+  } catch(err) { list.innerHTML = esc(err.message); }
+}
+
+boot();
+</script>
+</body>
+</html>
