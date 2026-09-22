@@ -143,7 +143,24 @@ CREATE TABLE IF NOT EXISTS riders (
   emergency_contact_phone TEXT,
   password_hash           TEXT NOT NULL,
   password_salt           TEXT NOT NULL,
+  -- NULL until the rider enters the code emailed to them at signup (see
+  -- email_verifications below and POST /api/auth/verify-email). Login is
+  -- refused while this is NULL — see routes/auth.js.
+  email_verified_at       TEXT,
   created_at              TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- One outstanding code per signup/resend — a new row invalidates any earlier
+-- unused one for the same rider (see routes/auth.js). code_hash stores
+-- SHA-256(code), never the raw 6-digit code, same reasoning as sessions'
+-- token_hash below.
+CREATE TABLE IF NOT EXISTS email_verifications (
+  id          INTEGER PRIMARY KEY,
+  rider_id    INTEGER NOT NULL REFERENCES riders(id) ON DELETE CASCADE,
+  code_hash   TEXT NOT NULL,
+  attempts    INTEGER NOT NULL DEFAULT 0,
+  expires_at  TEXT NOT NULL,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 -- token_hash stores SHA-256(token), never the raw token — if this file or the

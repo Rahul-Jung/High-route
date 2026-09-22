@@ -179,6 +179,18 @@ if (crTableDef && !crTableDef.sql.includes("'approved'")) {
   if (!crCols2.includes('booking_id')) db.exec('ALTER TABLE custom_requests ADD COLUMN booking_id INTEGER REFERENCES bookings(id) ON DELETE SET NULL');
 }
 
+// Signup email verification: CREATE TABLE IF NOT EXISTS (above) already
+// creates email_verifications for a brand-new database, but a riders table
+// that predates this feature needs the column added explicitly. Every
+// pre-existing rider is backfilled as already-verified — they signed up
+// under the old no-verification flow, so they'd otherwise be locked out of
+// their own account by a rule that didn't exist when they registered.
+const riderCols = db.prepare("PRAGMA table_info(riders)").all().map(c => c.name);
+if (!riderCols.includes('email_verified_at')) {
+  db.exec('ALTER TABLE riders ADD COLUMN email_verified_at TEXT');
+  db.exec(`UPDATE riders SET email_verified_at = created_at WHERE email_verified_at IS NULL`);
+}
+
 // One-time content fix: the original seed used random picsum.photos
 // placeholders (no thematic control — a tour card could end up showing a
 // water droplet macro shot or star trails instead of a trail/mountain-biking

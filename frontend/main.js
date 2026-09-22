@@ -149,7 +149,7 @@ async function apiGet(path){
   // endpoints simply ignore the extra header.
   const r = await fetch(API_BASE + path, { headers: riderAuthHeaders() });
   const data = await r.json();
-  if(!r.ok) throw new Error(data.error || r.statusText);
+  if(!r.ok) { const err = new Error(data.error || r.statusText); err.data = data; throw err; }
   return data;
 }
 async function apiPost(path, body){
@@ -159,14 +159,16 @@ async function apiPost(path, body){
   const headers = { 'Content-Type':'application/json', ...riderAuthHeaders() };
   const r = await fetch(API_BASE + path, { method:'POST', headers, body: JSON.stringify(body) });
   const data = await r.json();
-  if(!r.ok) throw new Error(data.error || r.statusText);
+  // err.data carries the rest of the error body (e.g. login's { needs_verification,
+  // email } on a 403) for callers that need more than just the message string.
+  if(!r.ok) { const err = new Error(data.error || r.statusText); err.data = data; throw err; }
   return data;
 }
 async function apiPatch(path, body){
   const headers = { 'Content-Type':'application/json', ...riderAuthHeaders() };
   const r = await fetch(API_BASE + path, { method:'PATCH', headers, body: JSON.stringify(body) });
   const data = await r.json();
-  if(!r.ok) throw new Error(data.error || r.statusText);
+  if(!r.ok) { const err = new Error(data.error || r.statusText); err.data = data; throw err; }
   return data;
 }
 
@@ -288,8 +290,30 @@ const Auth = (function(){
           <div class="auth-error" id="auth-signup-error"></div>
           <button type="submit" class="btn btn-solid btn-block">Create account</button>
         </form>
+        <form class="auth-form hidden" id="auth-verify-form">
+          <h2>Check your email</h2>
+          <p class="auth-sub">We sent a 6-digit code to <b id="auth-verify-email"></b>. Enter it below to activate your account.</p>
+          <div class="auth-field"><label>Verification code</label><input type="text" id="auth-verify-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></div>
+          <div class="auth-error" id="auth-verify-error"></div>
+          <button type="submit" class="btn btn-solid btn-block">Verify &amp; sign in</button>
+          <button type="button" class="btn btn-ghost btn-block" id="auth-verify-resend" style="margin-top:10px;">Resend code</button>
+        </form>
       </div>`;
     document.body.appendChild(overlay);
+
+    // The verify step isn't one of the tabs (you only land on it right after
+    // signing up, or after a sign-in attempt reports the account still needs
+    // verifying) — switching tabs manually always backs out of it to signin/signup.
+    function showVerifyStep(email){
+      overlay.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+      overlay.querySelector('#auth-signin-form').classList.add('hidden');
+      overlay.querySelector('#auth-signup-form').classList.add('hidden');
+      overlay.querySelector('#auth-verify-form').classList.remove('hidden');
+      overlay.querySelector('#auth-verify-email').textContent = email;
+      overlay.querySelector('#auth-verify-form').dataset.email = email;
+      overlay.querySelector('#auth-verify-error').textContent = '';
+      overlay.querySelector('#auth-verify-code').value = '';
+    }
 
     overlay.addEventListener('click', e => { if(e.target === overlay) close(); });
     overlay.querySelector('.auth-close').addEventListener('click', close);
@@ -297,6 +321,7 @@ const Auth = (function(){
       overlay.querySelectorAll('.auth-tab').forEach(t => t.classList.toggle('active', t === tab));
       overlay.querySelector('#auth-signin-form').classList.toggle('hidden', tab.dataset.tab !== 'signin');
       overlay.querySelector('#auth-signup-form').classList.toggle('hidden', tab.dataset.tab !== 'signup');
+      overlay.querySelector('#auth-verify-form').classList.add('hidden');
       overlay.querySelector('#auth-signin-error').textContent = '';
       overlay.querySelector('#auth-signup-error').textContent = '';
     }));
@@ -324,7 +349,13 @@ const Auth = (function(){
           // callers already do (see trip.html/tour-detail.html/dashboard.html).
           location.reload();
         }
-      } catch(err) { errEl.textContent = err.message; }
+      } catch(err) {
+        // A correct password on an account that never finished signup email
+        // verification — send them straight to the code-entry step instead
+        // of just showing an error they can't act on.
+        if(err.data && err.data.needs_verification){ showVerifyStep(err.data.email); return; }
+        errEl.textContent = err.message;
+      }
     });
 
     overlay.querySelector('#auth-signup-form').addEventListener('submit', async e => {
@@ -332,16 +363,49 @@ const Auth = (function(){
       const errEl = document.getElementById('auth-signup-error');
       errEl.textContent = '';
       try {
-        const data = await apiPost('/api/auth/register', {
+        const email = document.getElementById('auth-signup-email').value.trim();
+        await apiPost('/api/auth/register', {
           name: document.getElementById('auth-signup-name').value.trim(),
-          email: document.getElementById('auth-signup-email').value.trim(),
+          email,
           password: document.getElementById('auth-signup-password').value,
+        });
+        // Registering no longer signs you in directly — the account exists
+        // but is unusable until the emailed code is entered (see the comment
+        // on POST /api/auth/register in routes/auth.js).
+        showVerifyStep(email);
+      } catch(err) { errEl.textContent = err.message; }
+    });
+
+    overlay.querySelector('#auth-verify-form').addEventListener('submit', async e => {
+      e.preventDefault();
+      const errEl = document.getElementById('auth-verify-error');
+      errEl.textContent = '';
+      try {
+        const data = await apiPost('/api/auth/verify-email', {
+          email: overlay.querySelector('#auth-verify-form').dataset.email,
+          code: document.getElementById('auth-verify-code').value.trim(),
         });
         setSession(data);
         close();
         if(onSuccess){ const cb = onSuccess; onSuccess = null; cb(); }
         else location.reload(); // see the matching comment in the sign-in handler above
       } catch(err) { errEl.textContent = err.message; }
+    });
+
+    overlay.querySelector('#auth-verify-resend').addEventListener('click', async () => {
+      const btn = overlay.querySelector('#auth-verify-resend');
+      const errEl = document.getElementById('auth-verify-error');
+      const email = overlay.querySelector('#auth-verify-form').dataset.email;
+      const originalLabel = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Sending...';
+      try {
+        await apiPost('/api/auth/resend-verification', { email });
+        errEl.style.color = '#4C9A55'; errEl.textContent = 'A new code has been sent.';
+      } catch(err) {
+        errEl.style.color = ''; errEl.textContent = err.message;
+      } finally {
+        btn.disabled = false; btn.textContent = originalLabel;
+      }
     });
   }
 
