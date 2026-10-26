@@ -12,4 +12,4 @@
 window.HIGHROUTE_API_BASE =
   ['localhost', '127.0.0.1', '[::1]', '::1', ''].includes(location.hostname)
     ? 'http://localhost:4000'
-    : 'https://high-route-backend-production.up.railway.app';
+    : 'https://high-route-api.vercel.app';

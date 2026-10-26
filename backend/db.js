@@ -3,7 +3,8 @@ const path = require('path');
 const fs = require('fs');
 const { DatabaseSync } = require('node:sqlite');
 
-const DB_PATH = path.join(__dirname, 'data', 'highroute.db');
+// Serverless hosts (Vercel) have a read-only deploy folder; only /tmp is writable, and it is wiped on cold start.
+const DB_PATH = process.env.VERCEL ? '/tmp/highroute.db' : path.join(__dirname, 'data', 'highroute.db');
 const DB_DIR = path.dirname(DB_PATH);
 fs.mkdirSync(DB_DIR, { recursive: true });
 

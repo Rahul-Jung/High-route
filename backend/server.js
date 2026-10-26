@@ -90,12 +90,13 @@ function serveStatic(req, res) {
 }
 
 const server = http.createServer(async (req, res) => {
+  if (req.__preBody !== undefined) req.body = req.__preBody; // set by the serverless wrapper, which already consumed the stream
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   try {
     if (req.url.startsWith('/api/')) {
       if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)) {
-        try { req.body = await readJsonBody(req); }
+        try { if (req.__preBody === undefined) req.body = await readJsonBody(req); }
         catch (e) { return sendJson(res, 400, { error: e.message }); }
       }
       const handled = await router.handle(req, res);
@@ -108,10 +109,11 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
+if (!process.env.VERCEL) server.listen(PORT, () => {
   console.log(`High Route MTB backend running at http://localhost:${PORT}`);
   console.log(`Demo dashboards: /tracker.html  /admin.html  /guide.html`);
 });
+module.exports = server;
 
 // Auto-cancels unpaid ("pending") bookings once their payment hold expires,
 // releasing the seats — so this happens on its own, not only when someone

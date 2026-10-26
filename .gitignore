@@ -14,3 +14,6 @@ Thumbs.db
 
 # Contains real credentials (admin password, API keys) — local reference only
 PROJECT_GUIDE.md
+
+# Vercel API deploy staging (generated)
+.vercel-api-stage/
