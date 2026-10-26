@@ -7,6 +7,10 @@ const { DatabaseSync } = require('node:sqlite');
 const DB_PATH = process.env.VERCEL ? '/tmp/highroute.db' : path.join(__dirname, 'data', 'highroute.db');
 const DB_DIR = path.dirname(DB_PATH);
 fs.mkdirSync(DB_DIR, { recursive: true });
+// Serverless cold start: begin from the bundled catalogue snapshot (tours, departures, destination pages — no people) if one shipped.
+if (process.env.VERCEL && !fs.existsSync(DB_PATH)) {
+  try { fs.copyFileSync(path.join(__dirname, 'seed-snapshot.db'), DB_PATH); } catch { /* none bundled: seed.js builds the basics */ }
+}
 
 // Hardening: the data directory (and the db files once they exist) should
 // only be readable/writable by the account running the server, not "everyone
