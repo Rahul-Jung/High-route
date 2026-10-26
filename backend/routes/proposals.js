@@ -1,11 +1,12 @@
 'use strict';
 const { all, get, run, transaction } = require('../db');
-const { ok, created, badRequest, notFound, unauthorized, newToken } = require('../lib/util');
+const { ok, created, badRequest, notFound, unauthorized, forbidden, newToken, validateCard } = require('../lib/util');
 const { requireAdmin, requireAuth, sessionFromRequest } = require('../lib/auth');
 const { notifyAdmins, notifyRider } = require('../lib/notifications');
 const { logRequestEvent } = require('../lib/requestAudit');
 const { computeEndDate } = require('./departures');
 const { bookingReference, priceAddons, validateRider } = require('./bookings');
+const { refuseIfPaymentsDisabled } = require('../lib/payments');
 
 const PROPOSAL_TERMINAL = ['declined', 'expired', 'withdrawn', 'superseded'];
 // A proposal still awaiting a customer's first response, or one they've
@@ -370,7 +371,11 @@ function register(router) {
   router.get('/api/custom-requests/:id/proposals', (req, res) => {
     const reqRow = get('SELECT * FROM custom_requests WHERE id = ?', [Number(req.params.id)]);
     if (!reqRow) return notFound(res, 'Request not found');
-    if (!canAccessRequest(req, reqRow)) return unauthorized(res, 'Sign in as this request\'s owner, or as an admin, to view its proposals');
+    if (!canAccessRequest(req, reqRow)) {
+      return sessionFromRequest(req)
+        ? forbidden(res, 'This request belongs to a different account.')
+        : unauthorized(res, 'Sign in as this request\'s owner, or as an admin, to view its proposals');
+    }
     const session = sessionFromRequest(req);
     const isAdmin = session && session.subject_type === 'admin';
     let rows = all('SELECT * FROM custom_proposals WHERE custom_request_id = ? ORDER BY version ASC', [reqRow.id]);
@@ -392,7 +397,7 @@ function register(router) {
     if (!proposal) { notFound(res, 'Proposal not found'); return null; }
     const reqRow = get('SELECT * FROM custom_requests WHERE id = ?', [proposal.custom_request_id]);
     if (!reqRow || reqRow.rider_id !== req.session.subject_id) {
-      unauthorized(res, 'You can only respond to a proposal made against your own request');
+      forbidden(res, 'This proposal was made for a different account, so you can\'t respond to it.');
       return null;
     }
     return { proposal, reqRow };
@@ -481,6 +486,12 @@ function register(router) {
   // POST /api/bookings/:id/pay) — any well-formed card is accepted and the
   // amount is recorded immediately.
   router.post('/api/proposals/:id/pay', requireAuth('rider', (req, res) => {
+    // This endpoint takes the deposit AND creates the booking, so refusing it
+    // means a custom trip cannot be confirmed online. That is the honest
+    // state: it is confirmed when an admin records the deposit through
+    // PATCH /api/admin/custom-requests/:id/payment, which also creates the
+    // booking. See lib/payments.js.
+    if (refuseIfPaymentsDisabled(res)) return;
     expireOverdueProposals();
     const loaded = loadOwnedProposal(req, res);
     if (!loaded) return;
@@ -524,11 +535,12 @@ function register(router) {
     const amount = depositCents - alreadyPaid;
     if (!(amount > 0)) return badRequest(res, 'This proposal has already been paid in full.');
 
-    const card = b.card || {};
-    const cardNumber = String(card.number || '').replace(/[\s-]+/g, '');
-    if (!/^\d{13,19}$/.test(cardNumber)) return badRequest(res, 'Enter a valid card number');
-    if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(String(card.expiry || '').trim())) return badRequest(res, 'Enter a valid expiry date (MM/YY)');
-    if (!/^\d{3,4}$/.test(String(card.cvv || '').trim())) return badRequest(res, 'Enter a valid CVV');
+    // Shared with POST /api/bookings/:id/pay (lib/util.js validateCard), which
+    // also means this path now rejects an already-expired expiry date instead
+    // of only checking the MM/YY shape.
+    const cardCheck = validateCard(b.card);
+    if (cardCheck.error) return badRequest(res, cardCheck.error);
+    const cardLast4 = cardCheck.last4;
 
     const newPaidTotal = alreadyPaid + amount;
     // The deposit threshold being met is what turns this from "a paid
@@ -540,7 +552,7 @@ function register(router) {
 
     const bookingId = transaction(() => {
       run('INSERT INTO custom_request_payments (custom_request_id, proposal_id, amount_cents, currency, card_last4) VALUES (?,?,?,?,?)',
-        [reqRow.id, proposal.id, amount, proposal.currency, cardNumber.slice(-4)]);
+        [reqRow.id, proposal.id, amount, proposal.currency, cardLast4]);
       run('UPDATE custom_requests SET amount_paid_cents = ?, status = ?, updated_at = datetime(\'now\') WHERE id = ?',
         [newPaidTotal, newStatus, reqRow.id]);
       logRequestEvent({
@@ -566,7 +578,7 @@ function register(router) {
     ok(res, {
       amount_paid_cents: newPaidTotal, deposit_cents: depositCents, price_cents: fullTotalCents,
       balance_due_cents: fullTotalCents - newPaidTotal,
-      status: newStatus, receipt: { last4: cardNumber.slice(-4), amount_cents: amount },
+      status: newStatus, receipt: { last4: cardLast4, amount_cents: amount },
       booking_id: bookingId,
     });
   }));

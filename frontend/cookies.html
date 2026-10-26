@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cookies | High Route</title>
+<meta name="description" content="What this site stores in your browser — which is very little, and no tracking cookies at all.">
+<meta property="og:title" content="Cookies | High Route">
+<meta property="og:description" content="What this site stores in your browser — which is very little, and no tracking cookies at all.">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div data-site-header></div>
+
+<main id="main">
+<header class="page-head">
+  <div class="wrap">
+    <p class="crumbs"><a href="index.html">Home</a><span>/</span>Cookies</p>
+    <p class="page-eyebrow">Legal</p>
+    <h1>Cookies</h1>
+    <p class="page-lede">Short, because there is very little to say — and it is written from what the code does rather than from a template.</p>
+  </div>
+</header>
+
+<section class="section">
+  <div class="wrap">
+    <div class="">
+      <div class="prose">
+        <h2>There is no cookie banner, and that is deliberate</h2>
+        <p>A consent banner is required when a site sets cookies that are not strictly necessary — analytics,
+          advertising, tracking. This site sets none of those, so a banner would have nothing to ask you about.</p>
+        <div class="note"><div><p>You have probably met a banner that asks for consent and then loads the trackers
+          anyway, or one where "reject" does nothing. The brief this site was built to forbids exactly that: a
+          consent interface that does not control the behaviour it claims to control. The honest version of that
+          requirement, on a site with no trackers, is no banner and this page.</p></div></div>
+
+        <h2>What is actually stored in your browser</h2>
+        <p>Not cookies, as it happens — browser storage, which does the same job and is covered by the same
+          rules. The complete list:</p>
+        <h3>Strictly necessary</h3>
+        <ul>
+          <li><strong>Your session token</strong>, once you sign in. Without it you would be signed out on every page
+            load. Stored as a token that the server matches against a hash; clearing it signs you out.</li>
+        </ul>
+        <h3>Functional, and only if you use the feature</h3>
+        <ul>
+          <li><strong>Your Adventure Finder answers</strong>, in session storage, so that following a result and
+            coming back does not lose them. Cleared when you close the tab, and also held in the page URL, which is
+            why a finder result is shareable.</li>
+        </ul>
+        <h3>Not present</h3>
+        <ul>
+          <li>No analytics cookies. There is no analytics on this site.</li>
+          <li>No advertising or cross-site tracking cookies.</li>
+          <li>No social media pixels or embedded like buttons.</li>
+          <li>No session recording or heatmaps.</li>
+        </ul>
+
+        <h2>Third-party requests</h2>
+        <p>Two things on these pages are loaded from somewhere else, and both can see your IP address as a
+          consequence of being requested, in the way that loading any remote file does:</p>
+        <ul>
+          <li><strong>Google Fonts</strong> (fonts.googleapis.com) — the three typefaces this site uses.</li>
+          <li><strong>Unsplash</strong> (images.unsplash.com) — the photographs.</li>
+        </ul>
+        <p>Neither sets a cookie through this site. Self-hosting both would remove the third-party request entirely
+          and is the right thing to do before launch; it is on the list.</p>
+
+        <h2>Clearing it</h2>
+        <p>Signing out removes the session token. Clearing site data for this domain in your browser removes
+          everything listed above. Nothing here survives that, and nothing here is stored anywhere else as a copy.</p>
+
+        <h2>If this ever changes</h2>
+        <p>If analytics or any non-essential cookie is added to this site later, this page has to change and a real
+          consent mechanism — one that actually gates the loading of the script — has to come with it.
+          A banner added without that would be worse than none.</p>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<div data-site-footer></div>
+
+<script src="shell.js"></script>
+<script src="config.js"></script>
+<script src="main.js"></script>
+<script src="adventures.js"></script>
+</body>
+</html>

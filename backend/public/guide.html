@@ -29,8 +29,14 @@
   <div class="sub">Demo credential seeded for every guide: <code>tashi@highroutemtb.demo</code> / <code>ride-nepal-2026</code></div>
 
   <div id="login-box">
-    <input id="email" type="email" placeholder="Guide email" value="tashi@highroutemtb.demo">
-    <input id="password" type="password" placeholder="Password" value="ride-nepal-2026">
+    <!-- These two inputs used to ship with the demo guide's email and password
+         pre-filled, on a page served publicly by the live backend — one click
+         from signed in as a guide for anyone who opened it. The demo account's
+         details are in PROJECT_GUIDE.md for whoever needs them. -->
+    <label for="email" style="display:block; font-size:12px; margin:0 0 4px;">Guide email</label>
+    <input id="email" type="email" autocomplete="username" placeholder="you@example.com">
+    <label for="password" style="display:block; font-size:12px; margin:10px 0 4px;">Password</label>
+    <input id="password" type="password" autocomplete="current-password">
     <button onclick="login()">Sign in</button>
     <div id="login-error" class="toast" style="color:#D9534F;"></div>
   </div>

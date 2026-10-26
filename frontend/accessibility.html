@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accessibility | High Route</title>
+<meta name="description" content="What has been done to make this site usable, what has been tested, and what is known to fall short.">
+<meta property="og:title" content="Accessibility | High Route">
+<meta property="og:description" content="What has been done to make this site usable, what has been tested, and what is known to fall short.">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div data-site-header></div>
+
+<main id="main">
+<header class="page-head">
+  <div class="wrap">
+    <p class="crumbs"><a href="index.html">Home</a><span>/</span>Accessibility</p>
+    <p class="page-eyebrow">Legal</p>
+    <h1>Accessibility</h1>
+    <p class="page-lede">Including the parts that are not good enough yet, because an accessibility statement that only lists successes is not a statement.</p>
+  </div>
+</header>
+
+<section class="section">
+  <div class="wrap">
+    <div class="doc-layout">
+      <nav class="toc" aria-label="On this page">
+        <h4>On this page</h4>
+        <ul>
+          <li><a href="#target">What we are aiming at</a></li>
+          <li><a href="#done">What has been done</a></li>
+          <li><a href="#tested">How it has been tested</a></li>
+          <li><a href="#known">Known problems</a></li>
+          <li><a href="#feedback">Telling us</a></li>
+        </ul>
+      </nav>
+      <div class="prose">
+        <h2 id="target">What we are aiming at</h2>
+        <p>WCAG 2.2 Level AA. This page says where the site is against that, honestly, including where it falls short.</p>
+        <div class="note note-action"><div><p><strong>This site has not had a formal accessibility audit and has not
+          been tested with real assistive technology by the people who use it.</strong> Everything below is the
+          result of building to the standard and testing with automated tools and a keyboard, which catches a
+          great deal and is not the same thing as being usable. Treat the claims as "built for" rather than
+          "verified as".</p></div></div>
+
+        <h2 id="done">What has been done</h2>
+        <h3>Structure and navigation</h3>
+        <ul>
+          <li>A skip link, first in the tab order on every page, jumping to the main content.</li>
+          <li>Semantic landmarks — header, nav, main, footer — on every page.</li>
+          <li>One <code>h1</code> per page and headings in order, so a screen-reader user can navigate by them.</li>
+          <li>Dropdown navigation whose top-level items are real links to real pages, not <code>href=&quot;&#35;&quot;</code>.
+            A menu parent that goes nowhere is unusable by keyboard and on touch; this site had several and they
+            are gone.</li>
+          <li>Breadcrumbs on every section page.</li>
+        </ul>
+        <h3>Keyboard</h3>
+        <ul>
+          <li>Visible focus outlines on every interactive element, specified rather than left to the browser default
+            — the default outline disappears against a dark green surface.</li>
+          <li>Itineraries and FAQs are built on native <code>&lt;details&gt;</code>, so they are keyboard operable
+            and announced correctly without any JavaScript.</li>
+          <li>Filters are real checkboxes and selects in a <code>&lt;fieldset&gt;</code> with a legend, not
+            <code>div</code>s with click handlers.</li>
+        </ul>
+        <h3>Forms</h3>
+        <ul>
+          <li>Every field has a real <code>&lt;label&gt;</code>.</li>
+          <li>Errors are announced through a live region and tied to their field with <code>aria-invalid</code> and
+            <code>aria-describedby</code> — colour alone is never the message.</li>
+          <li>Focus moves to the first field with a problem on a failed submit.</li>
+        </ul>
+        <h3>Content and colour</h3>
+        <ul>
+          <li>Body text and secondary text meet AA contrast on their backgrounds. Twenty colour pairs were
+            computed rather than assumed, and two failed and were changed: the muted text colour was 4.3:1
+            (which only passes at large sizes) and is now 5.41:1, and white on the brand accent was 3.63:1 on
+            solid buttons &mdash; fine for large text, but a button label here is 14px bold, so it needed 4.5:1.
+            Buttons now use a darkened accent at 4.91:1 while every non-text use keeps the brand colour.</li>
+          <li>Availability is never colour alone — the pip always has text next to it.</li>
+          <li>Images have alt text; decorative images have empty alt and are hidden from assistive technology.</li>
+          <li><code>prefers-reduced-motion</code> is respected, which switches off the card and image transforms.</li>
+          <li>Data tables become stacked rows at narrow widths rather than scrolling sideways &mdash; a departure
+            date list is the one thing on a trip page a phone user definitely needs.</li>
+        </ul>
+
+        <h2 id="tested">How it has been tested</h2>
+        <ul>
+          <li>Keyboard-only navigation of every page.</li>
+          <li>Automated checks for heading order, labels, alt text, landmark structure and tag balance, run against
+            every page as part of this build.</li>
+          <li>Contrast ratios calculated for every text colour against every background it is used on.</li>
+          <li>Layout written mobile-first, with every media query widening the base rule rather than
+            undoing a desktop grid. Breakpoints at 560, 600, 640, 720, 760, 860, 980 and 1040px.</li>
+          <li>Every page rendered with JavaScript disabled, to confirm it degrades to something honest rather than
+            to an empty div.</li>
+        </ul>
+        <p>Not done: testing with NVDA, JAWS or VoiceOver by a regular user of them; testing with voice control or a
+          switch device; testing at 400% zoom in every browser; and measuring reflow at 320px in a browser
+          (see Known problems).</p>
+
+        <h2 id="known">Known problems</h2>
+        <p>Listed because they are real, not because they are comfortable:</p>
+        <ul>
+          <li><strong>Most page content needs JavaScript.</strong> Departures, prices and availability are loaded
+            live, so with scripting off those pages show an explanation and a working link rather than the content.
+            The explanation is deliberate — stale prices baked into the HTML would be worse — but it is
+            still a barrier.</li>
+          <li><strong>The elevation chart on a trip page is a canvas</strong> and is not accessible to a screen
+            reader. The same figures are in the itinerary text beneath it, which is a mitigation rather than a fix.</li>
+          <li><strong>No formal audit</strong>, and no testing with real assistive technology by its users.</li>
+          <li><strong>Photographs are decorative</strong> and their alt text is generic. Several would benefit from
+            a real description.</li>
+          <li><strong>Google Fonts is loaded from a third party</strong>, so a slow or blocked font request affects
+            text rendering.</li>
+          <li><strong>Long informational pages have no in-page progress indication</strong> beyond the contents list.</li>
+          <li><strong>Reflow at 320px has not been verified in a browser</strong>, and one thing makes that worth
+            saying out loud: the stylesheet sets <code>overflow-x: hidden</code> on the body. That means
+            horizontal overflow is <em>clipped</em> rather than prevented &mdash; the page will never scroll
+            sideways, but if something is too wide at 320px its right-hand edge is simply cut off and
+            unreachable, which is worse than a scrollbar. The layout is built mobile-first and should reflow,
+            but "should" is not "does", and until it has been measured this belongs on this list rather than
+            on the one above.</li>
+        </ul>
+
+        <h2 id="feedback">Telling us</h2>
+        <p>If something here does not work for you, <a href="contact.html">tell us</a> — what you were trying to
+          do, what happened, and what you were using. That is more useful than any audit, and an accessibility
+          problem is a defect like any other.</p>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<div data-site-footer></div>
+
+<script src="shell.js"></script>
+<script src="config.js"></script>
+<script src="main.js"></script>
+<script src="adventures.js"></script>
+</body>
+</html>

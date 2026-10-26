@@ -1,8 +1,9 @@
 'use strict';
 const { all, get, run } = require('../db');
-const { ok, created, badRequest, notFound, unauthorized } = require('../lib/util');
+const { ok, created, badRequest, notFound, unauthorized, forbidden, isIsoDate, validateNumbers } = require('../lib/util');
 const { requireAdmin, requireAuth, sessionFromRequest } = require('../lib/auth');
 const { logRequestEvent } = require('../lib/requestAudit');
+const { notifyAdmins } = require('../lib/notifications');
 const { withActiveProposal } = require('./proposals');
 const { bookingReference } = require('./bookings');
 
@@ -15,7 +16,6 @@ const RIDER_CANCELLABLE_STATUSES = ['new', 'contacted', 'proposal_sent', 'deposi
 // by hand — see the comment on that route for why every other stage is
 // locked to the real proposal/payment lifecycle instead.
 const ADMIN_MANUAL_STATUSES = ['contacted', 'completed'];
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 // Shared by both the admin CRM listing and the rider's own listing: turns
 // the LEFT JOIN tours columns (aliased tour_*) into a nested based_on_tour
@@ -61,24 +61,86 @@ function register(router) {
   // tour's fixed departure dates.
   router.post('/api/custom-requests', requireAuth('rider', (req, res) => {
     const b = req.body || {};
-    if (!b.email) return badRequest(res, 'email is required');
-    if (b.preferredDate && !DATE_RE.test(b.preferredDate)) return badRequest(res, 'preferredDate must be an ISO date (YYYY-MM-DD)');
+    if (b.preferredDate && !isIsoDate(b.preferredDate)) return badRequest(res, 'preferredDate must be a real date in YYYY-MM-DD form');
+    const nums = validateNumbers({
+      tourId: [b.tourId, { min: 1 }],
+      groupSize: [b.groupSize, { min: 1, max: 100 }],
+    });
+    if (nums.error) return badRequest(res, nums.error);
 
     let tour = null;
-    if (b.tourId) {
-      tour = get('SELECT id, name FROM tours WHERE id = ?', [Number(b.tourId)]);
+    if (nums.values.tourId !== null) {
+      tour = get('SELECT id, name FROM tours WHERE id = ?', [nums.values.tourId]);
       if (!tour) return badRequest(res, 'Selected tour not found');
     }
 
+    // Name and email come from the authenticated account, never the request
+    // body. They used to be client-supplied (and `email` was even *required*,
+    // on an endpoint that already knows exactly who is calling it), so a
+    // signed-in rider could file a request under anyone else's address — and
+    // the CRM then displayed that address next to the real account's, with no
+    // indication of which one was true. Same fix that POST /api/bookings got
+    // for its lead rider; this endpoint was simply missed at the time.
+    // The Private Trips page's extra fields (see migration 003). All
+    // optional, all validated against the same vocabularies the public site
+    // uses, so a request cannot arrive carrying an activity or an
+    // accommodation type that does not exist. The build-adventure wizard
+    // sends none of them and is unaffected.
+    const { isKnownActivity, ACCOMMODATION_TYPES } = require('../lib/adventures');
+    const DIFFICULTY_PREFS = ['relaxed', 'active', 'moderate', 'challenging', 'tough', 'no-preference'];
+    const CONTACT_PREFS = ['email', 'phone', 'either'];
+
+    if (b.activity && !isKnownActivity(b.activity)) return badRequest(res, 'Unknown activity');
+    if (b.difficultyPref && !DIFFICULTY_PREFS.includes(b.difficultyPref)) {
+      return badRequest(res, `difficultyPref must be one of: ${DIFFICULTY_PREFS.join(', ')}`);
+    }
+    if (b.accommodationPref && b.accommodationPref !== 'no-preference'
+        && !ACCOMMODATION_TYPES.some(a => a.key === b.accommodationPref)) {
+      return badRequest(res, 'Unknown accommodation preference');
+    }
+    if (b.contactPreference && !CONTACT_PREFS.includes(b.contactPreference)) {
+      return badRequest(res, `contactPreference must be one of: ${CONTACT_PREFS.join(', ')}`);
+    }
+    for (const field of ['dateFrom', 'dateTo']) {
+      if (b[field] && !isIsoDate(b[field])) return badRequest(res, `${field} must be a real date in YYYY-MM-DD form`);
+    }
+    if (b.dateFrom && b.dateTo && b.dateFrom > b.dateTo) {
+      return badRequest(res, 'dateFrom cannot be after dateTo');
+    }
+    const clip = (v, n) => (v ? String(v).trim().slice(0, n) || null : null);
+
     const riderId = req.session.subject_id;
+    const rider = get('SELECT id, name, email FROM riders WHERE id = ?', [riderId]);
     const id = run(
-      `INSERT INTO custom_requests (rider_id, tour_id, preferred_date, name, email, destination, duration_bucket, riding_style, experience, group_size, budget, preferences_json)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [riderId, tour ? tour.id : null, b.preferredDate || null, b.name || null, b.email,
+      `INSERT INTO custom_requests (rider_id, tour_id, preferred_date, name, email, destination,
+              duration_bucket, riding_style, experience, group_size, budget, preferences_json,
+              activity, difficulty_pref, accommodation_pref, special_requirements,
+              date_from, date_to, phone, contact_preference, source)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [riderId, tour ? tour.id : null, b.preferredDate || null, rider.name, rider.email,
        tour ? tour.name : (b.destination || null), b.duration || null, b.style || null,
-       b.experience || null, b.groupSize || null, b.budget || null, JSON.stringify(b.preferences || [])]
+       // group_size is a TEXT column (see schema.sql), so binding the number
+       // 4 stores the string "4.0" — which then shows as "4.0 people" on the
+       // CRM board. Every row written before this came from the wizard, which
+       // posted a string; the Private Trips form posts a number, which is how
+       // this surfaced. Stringify the integer explicitly.
+       b.experience || null,
+       nums.values.groupSize === null ? null : String(Math.round(nums.values.groupSize)),
+       b.budget || null, JSON.stringify(b.preferences || []),
+       b.activity || null, b.difficultyPref || null, b.accommodationPref || null,
+       clip(b.specialRequirements, 2000), b.dateFrom || null, b.dateTo || null,
+       clip(b.phone, 40), b.contactPreference || null, clip(b.source, 40)]
     ).lastInsertRowid;
     logRequestEvent({ customRequestId: id, eventType: 'request_created', toStatus: 'new', actorType: 'rider', actorId: riderId });
+    try {
+      notifyAdmins({
+        type: 'custom_request_new',
+        title: 'New private-trip request',
+        body: rider.name + ' asked about ' + (tour ? tour.name : (b.destination || 'a custom trip')) + '.',
+        linkUrl: 'custom-request.html?id=' + id,
+        customRequestId: id,
+      });
+    } catch (e) { /* best-effort */ }
     created(res, { id, status: 'new', message: 'Request received — a guide will reply within two working days.' });
   }));
 
@@ -163,7 +225,11 @@ function register(router) {
     const session = sessionFromRequest(req);
     const isAdmin = session && session.subject_type === 'admin';
     const isOwner = session && session.subject_type === 'rider' && reqRow.rider_id === session.subject_id;
-    if (!isAdmin && !isOwner) return unauthorized(res, 'Sign in as the requester, or as an admin, to cancel this request');
+    if (!isAdmin && !isOwner) {
+      return session
+        ? forbidden(res, 'This request belongs to a different account, so you can\'t cancel it.')
+        : unauthorized(res, 'Sign in as the requester, or as an admin, to cancel this request');
+    }
     if (!isAdmin && !RIDER_CANCELLABLE_STATUSES.includes(reqRow.status)) {
       return badRequest(res, 'This request is already ' + reqRow.status + ' and can no longer be self-cancelled — contact us directly');
     }

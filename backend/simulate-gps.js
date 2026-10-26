@@ -7,14 +7,55 @@
  * DEMO ONLY — see README "GPS & safety disclaimer". This interpolates in a
  * straight line between overnight villages; it is not a real trail path.
  *
- * Usage:  node simulate-gps.js [--base http://localhost:4000] [--speed 1]
+ * POST /api/gps/ping is guide/admin-only (it used to be open to anyone, which
+ * meant any stranger could write positions into a live tracking feed), so this
+ * script signs in first. It uses the same ADMIN_EMAIL/ADMIN_PASSWORD the server
+ * bootstraps with, or --email=/--password= if you'd rather pass a guide's.
+ *
+ * Usage:  node simulate-gps.js [--base=http://localhost:4000] [--speed=1]
+ *                              [--email=... --password=...]
  */
-const BASE = (process.argv.find(a => a.startsWith('--base=')) || '--base=http://localhost:4000').split('=')[1];
-const SPEED = Number((process.argv.find(a => a.startsWith('--speed=')) || '--speed=1').split('=')[1]); // pings/sec
+const arg = (name, fallback) => {
+  const hit = process.argv.find(a => a.startsWith(`--${name}=`));
+  return hit ? hit.slice(name.length + 3) : fallback;
+};
+const BASE = arg('base', 'http://localhost:4000');
+const SPEED = Number(arg('speed', '1')); // pings/sec
+const EMAIL = arg('email', process.env.ADMIN_EMAIL || '');
+const PASSWORD = arg('password', process.env.ADMIN_PASSWORD || '');
 
 const KATHMANDU = { lat: 27.7172, lng: 85.3240, alt: 1400 };
 
+let authHeader = null;
+
+/** Signs in as an admin (or, if --email looks like a guide's, falls back to the
+ *  guide login) and keeps the bearer token for every later ping. */
+async function signIn() {
+  if (!EMAIL || !PASSWORD) {
+    throw new Error([
+      'Posting GPS pings needs a guide or admin session.',
+      '  Set ADMIN_EMAIL and ADMIN_PASSWORD (the same ones server.js uses), or pass',
+      '  --email=you@example.com --password=... for a guide account.',
+    ].join('\n'));
+  }
+  for (const path of ['/api/admin/login', '/api/guide/login']) {
+    const res = await fetch(`${BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: EMAIL, password: PASSWORD }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      authHeader = { Authorization: 'Bearer ' + data.token };
+      console.log(`Signed in via ${path} as ${EMAIL}.`);
+      return;
+    }
+  }
+  throw new Error(`Could not sign in as ${EMAIL} — check the email/password, then try again.`);
+}
+
 async function main() {
+  await signIn();
   console.log('Looking up the Upper Mustang tour and its next departure...');
   const tourRes = await fetch(`${BASE}/api/tours/upper-mustang`);
   if (!tourRes.ok) throw new Error('Could not reach the API at ' + BASE + ' — is server.js running?');
@@ -53,11 +94,15 @@ async function main() {
 
 async function postPing(departureId, label, lat, lng, altitudeM, speedKmh) {
   try {
-    await fetch(`${BASE}/api/gps/ping`, {
+    const res = await fetch(`${BASE}/api/gps/ping`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeader },
       body: JSON.stringify({ departureId, label, lat, lng, altitudeM, speedKmh, source: 'simulated' }),
     });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      console.error(`Ping rejected (${res.status}): ${body.error || res.statusText}`);
+    }
   } catch (e) {
     console.error('Ping failed:', e.message);
   }

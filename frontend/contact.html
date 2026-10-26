@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact | High Route</title>
+<meta name="description" content="How to reach High Route — and what to ask before you book.">
+<meta property="og:title" content="Contact | High Route">
+<meta property="og:description" content="How to reach High Route — and what to ask before you book.">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div data-site-header></div>
+
+<main id="main">
+<header class="page-head">
+  <div class="wrap">
+    <p class="crumbs"><a href="index.html">Home</a><span>/</span>Contact</p>
+    <p class="page-eyebrow">Get in touch</p>
+    <h1>Contact</h1>
+    <p class="page-lede">Ask us anything — about a specific adventure, a date, a booking you already have, or
+      whether a trip suits you. No account needed. To have a whole trip designed around your group, use
+      <a href="private-trips.html" style="color:inherit">Private Trips</a>.</p>
+  </div>
+</header>
+
+<section class="section">
+  <div class="wrap">
+    <div class="">
+      <div class="prose">
+        <div class="contact-grid" style="margin:0">
+          <div>
+            <h2 style="margin-top:0" id="enquiry-title">Send us a question</h2>
+<p>A person reads every one of these. <strong>No automatic confirmation email is sent</strong> — when you
+  submit, this page tells you it has been saved, and the reply comes from a member of the team.</p>
+
+<form id="enquiry-form" class="finder-card" novalidate aria-labelledby="enquiry-title" style="margin:18px 0 34px">
+  <div class="form-grid">
+    <div class="field">
+      <label for="eq-topic">What is it about?</label>
+      <select id="eq-topic" name="topic">
+        <option value="trip">A trip or a date</option>
+        <option value="booking">A booking I already have</option>
+        <option value="other">Something else</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-grid form-grid-2">
+    <div class="field">
+      <label for="eq-name">Your name <span class="required-mark" aria-hidden="true">*</span></label>
+      <input id="eq-name" name="name" autocomplete="name" required aria-describedby="eq-name-err">
+      <span class="field-error" id="eq-name-err" data-error-for="name"></span>
+    </div>
+    <div class="field">
+      <label for="eq-email">Email <span class="required-mark" aria-hidden="true">*</span></label>
+      <input id="eq-email" name="email" type="email" autocomplete="email" required aria-describedby="eq-email-err">
+      <span class="field-error" id="eq-email-err" data-error-for="email"></span>
+    </div>
+  </div>
+
+  <div class="form-grid form-grid-2">
+    <div class="field">
+      <label for="eq-phone">Phone <span class="hint" style="display:inline">(optional)</span></label>
+      <input id="eq-phone" name="phone" type="tel" autocomplete="tel" aria-describedby="eq-phone-err">
+      <span class="field-error" id="eq-phone-err" data-error-for="phone"></span>
+    </div>
+    <div class="field">
+      <label for="eq-travellers">How many of you? <span class="hint" style="display:inline">(optional)</span></label>
+      <input id="eq-travellers" name="travellers" type="number" min="1" max="100" inputmode="numeric" aria-describedby="eq-travellers-err">
+      <span class="field-error" id="eq-travellers-err" data-error-for="travellers"></span>
+    </div>
+  </div>
+
+  <div class="form-grid form-grid-2" id="eq-trip-fields">
+    <div class="field">
+      <label for="eq-adventure">Which adventure? <span class="hint" style="display:inline">(optional)</span></label>
+      <select id="eq-adventure" name="adventure" aria-describedby="eq-adventure-err"><option value="">Loading adventures…</option></select>
+      <span class="field-error" id="eq-adventure-err" data-error-for="adventure"></span>
+    </div>
+    <div class="field">
+      <label for="eq-departure">Which departure? <span class="hint" style="display:inline">(optional)</span></label>
+      <select id="eq-departure" name="departureId" disabled aria-describedby="eq-departure-err"><option value="">Choose an adventure first</option></select>
+      <span class="field-error" id="eq-departure-err" data-error-for="departureId"></span>
+    </div>
+  </div>
+
+  <div class="form-grid" id="eq-date-field">
+    <div class="field">
+      <label for="eq-date">Or a date you have in mind <span class="hint" style="display:inline">(optional)</span></label>
+      <input id="eq-date" name="preferredDate" type="date" aria-describedby="eq-date-err">
+      <span class="field-error" id="eq-date-err" data-error-for="preferredDate"></span>
+    </div>
+  </div>
+
+  <div class="form-grid">
+    <div class="field">
+      <label for="eq-requirements">Anything we should know? <span class="hint" style="display:inline">(optional)</span></label>
+      <p class="hint" id="eq-requirements-hint">Dietary needs, medical conditions, experience at altitude, accessibility.</p>
+      <textarea id="eq-requirements" name="requirements" rows="3" aria-describedby="eq-requirements-hint eq-requirements-err"></textarea>
+      <span class="field-error" id="eq-requirements-err" data-error-for="requirements"></span>
+    </div>
+    <div class="field">
+      <label for="eq-message">Your question <span class="required-mark" aria-hidden="true">*</span></label>
+      <textarea id="eq-message" name="message" rows="5" required aria-describedby="eq-message-err"></textarea>
+      <span class="field-error" id="eq-message-err" data-error-for="message"></span>
+    </div>
+  </div>
+
+  <div class="finder-actions" style="margin-top:20px">
+    <button type="submit" class="btn btn-solid">Send question</button>
+    <p class="form-status" id="enquiry-status" role="status" aria-live="polite"></p>
+  </div>
+</form>
+
+<h2>Before you write</h2>
+<p>Two things that will get you a better answer:</p>
+            <ul>
+              <li><strong>To have a trip designed for your group, use <a href="private-trips.html">Private Trips</a></strong>
+rather than this form. It asks about dates, group size, difficulty and constraints, and the itinerary and
+price come back on your dashboard.</li>
+              <li><strong>Check the <a href="faqs.html">FAQs</a> first</strong> for anything about insurance,
+                equipment, altitude, accommodation or cancellation — those answers are more detailed there than
+                they will be in a reply.</li>
+            </ul>
+
+            <h2>Questions worth asking us</h2>
+            <p>Not a sales list. These are the questions that actually distinguish operators in Nepal, and you should
+              ask them of anyone you are considering, including us:</p>
+            <ul>
+              <li>Who guides this trip, and have they led it before?</li>
+              <li>What is the acclimatisation profile, and what happens if I am not acclimatising?</li>
+              <li>What is the 24-hour emergency contact during the trip, and who answers it?</li>
+              <li>What exactly is the evacuation arrangement in this region?</li>
+              <li>What is the deposit, when is the balance due, and what happens if you cancel the departure?</li>
+              <li>If the trip uses porters: what is the weight limit, and are they insured and equipped?</li>
+            </ul>
+            <div class="note note-action"><div><p>Several of those are things this site cannot yet answer in writing
+              — see <a href="safety.html#missing">what is not documented yet</a>. Ask them anyway, and get the
+              answer before you pay a deposit.</p></div></div>
+          </div>
+
+          <div class="contact-methods">
+            <h3>Reach us</h3>
+            <div class="contact-method">
+              <h4>Ask a question</h4>
+<p><a href="#enquiry-form">The form on this page</a><br>
+<span class="result-count">No account needed. Read by a person; no auto-reply.</span></p>
+</div>
+<div class="contact-method">
+<h4>A trip designed for you</h4>
+<p><a href="private-trips.html">Private Trips</a><br>
+<span class="result-count">Needs an account, so the proposal can come back to your dashboard.</span></p>
+</div>
+            <div class="contact-method">
+              <h4>Email</h4>
+              <p><a href="mailto:info@highroutemtb.com">info@highroutemtb.com</a></p>
+            </div>
+            <div class="contact-method">
+              <h4>Phone</h4>
+              <p><a href="tel:+97714002288">+977 1 400 2288</a><br>
+                <span class="result-count">Nepal Standard Time, UTC+5:45.</span></p>
+            </div>
+            <div class="contact-method">
+              <h4>Existing booking</h4>
+              <p><a href="dashboard.html">Your dashboard</a><br>
+                <span class="result-count">Bookings, riders, invoices and enquiry replies.</span></p>
+            </div>
+            <div class="contact-method">
+              <h4>Address</h4>
+              <p class="result-count">The registered trading address has not been supplied and is not shown here
+                rather than invented. Ask by email if you need it for an insurance or visa form.</p>
+            </div>
+            <div class="contact-method">
+              <h4>Something wrong on this site?</h4>
+              <p class="result-count">If a page states something as fact that turns out to be an assumption, that is
+                a defect. Email it and it gets fixed.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="note" style="margin-top:34px"><div><p><strong>About the contact details above.</strong> The email
+          address and phone number are the ones held in this project’s existing content and they have not been
+          independently confirmed as current. They are shown because a contact page with no contact method is
+          useless; they are flagged because an unconfirmed detail presented as fact is the thing this site tries not
+          to do. High Route needs to confirm both before launch.</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+<div data-site-footer></div>
+
+<script src="shell.js"></script>
+<script src="config.js"></script>
+<script src="main.js"></script>
+<script src="adventures.js"></script>
+</body>
+</html>

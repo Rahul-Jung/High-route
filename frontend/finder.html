@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Adventure Finder | High Route</title>
+<meta name="description" content="Four questions — what you want to do, how challenging, how long, and when — and we show you the trips that fit. No account, no email address needed.">
+<meta property="og:title" content="Adventure Finder | High Route">
+<meta property="og:description" content="Four questions — what you want to do, how challenging, how long, and when — and we show you the trips that fit. No account, no email address needed.">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div data-site-header></div>
+
+<main id="main">
+<header class="page-head">
+  <div class="wrap">
+    <p class="crumbs"><a href="index.html">Home</a><span>/</span><a href="finder.html">Plan Your Trip</a><span>/</span>Adventure Finder</p>
+    <p class="page-eyebrow">Four questions</p>
+    <h1>Find an Adventure</h1>
+    <p class="page-lede">Answer as many as you like — partial answers still work. No account, and we do not ask
+      for your email address to show you results.</p>
+  </div>
+</header>
+
+<section class="section" id="finder-page">
+  <div class="wrap">
+    <div class="two-col" style="align-items:start">
+      <div class="finder-card">
+        <form id="finder-form" novalidate>
+          <p class="result-count">Loading the questions…</p>
+        </form>
+      </div>
+      <div>
+        <div id="finder-summary"></div>
+        <div id="finder-results"></div>
+        <div id="finder-save"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+  <noscript>
+    <div class="wrap"><div class="note note-action"><div><p><strong>The Adventure Finder is loaded from the live database, which needs JavaScript.</strong>
+      With it switched off this page cannot show you real departures or prices, and showing you stale ones copied into the
+      HTML would be worse. <a href="adventures.html">adventures.html</a> has the same information once scripting is on.</p></div></div></div>
+  </noscript>
+</main>
+
+<div data-site-footer></div>
+
+<script src="shell.js"></script>
+<script src="config.js"></script>
+<script src="main.js"></script>
+<script src="adventures.js"></script>
+</body>
+</html>

@@ -1,4 +1,7 @@
-# Handoff: High Route MTB — Nepal mountain-bike tour platform
+# Handoff: High Route — Nepal adventure travel platform
+
+> Started as a mountain-bike tour site. It is now a universal adventure
+> platform (biking, trekking, multi-activity). See Session 3 below.
 
 Paste this whole document into a new chat to continue work with full context. It summarizes everything built, decided, and still open across the prior session(s).
 
@@ -194,6 +197,189 @@ For anything requiring a real server (not just a syntax check), the pattern that
 | Public calendar (links into trip.html) | `frontend/calendar.html` |
 | Shared styles (incl. toast system) | `frontend/style.css` |
 | Full project docs | `README.md` (startup, admin CMS, rider accounts/dashboard/booking lifecycle, API reference, security notes, what's real vs. placeholder, production upgrade path) |
+
+
+---
+
+## Session 3 additions
+
+Two big pieces. Everything above this line is still true unless contradicted
+here.
+
+### 17. It is no longer a mountain-bike site
+
+It is a **universal adventure platform**: mountain biking, trekking,
+multi-activity, with rafting and trail-running set up but switched off.
+
+The rule that matters: **one row in `tours` per adventure, whatever the
+activity.** Shared fields are real columns (they are what gets filtered and
+sorted). Anything specific to one activity lives in `activity_data_json`,
+validated against per-activity definitions in `backend/lib/adventures.js`.
+
+**To add a new activity** you do three things and no migration:
+
+1. Add a row to `activity_types` (or flip `enabled` to 1).
+2. Add an entry to `ACTIVITY_FIELDS` in `backend/lib/adventures.js`.
+3. Add an entry to `DIFFICULTY_DIMENSIONS` in the same file.
+
+The nav, filters, finder and detail page all read from those, so nothing else
+needs touching. `rafting` and `trail-running` are in there as worked examples.
+
+Difficulty is 5 universal levels **plus** per-activity dimensions (biking:
+fitness / technical / altitude; trekking: fitness / terrain / altitude). When
+all three dimensions equal the overall level, that means nobody has assessed
+them yet — the migration seeded them — and both the trip page and the admin
+panel say so in words.
+
+Also in this session: a shared header/footer (`frontend/shell.js`), 19 new
+pages, and the deletion of nine hand-written tour cards in `tours.html` that
+carried prices and availability for **trips that did not exist**.
+
+### 18. The design pass
+
+See README section 15 and SESSION_SUMMARY Task 17. Headline points:
+
+- Most complaints were **bugs**, not taste. `.section-head` was laying out
+  sideways on every page; the filter panel was unstyled rather than minimal;
+  the impact section silently reordered itself on phones; cards were
+  different sizes because a photo taller than 3:2 beat its `aspect-ratio`.
+- Destination pages went from a stub to eleven sections, with ten new DB
+  columns and a `destination_images` table.
+- The admin panel got the destination page editor and gallery manager it
+  never had.
+
+## New conventions from this session
+
+- **The display font must have a real italic.** 20 headings use
+  `font-style: italic`. A font without one gets a fake slant that looks
+  broken at hero size. If you change `--f-display`, check for an italic and
+  weights 400–700.
+- **Delete superseded CSS, do not just override it.** Twice this session a
+  dead rule became a live bug: `.filter-count` broke filter row spacing, and
+  the old `.dest-card::after` scrim painted over the new card.
+- **Watch flex/grid automatic minimums.** `min-height:auto` on a flex item is
+  why images stretched their containers. When a box's height should come from
+  `aspect-ratio`, set `min-height:0` and take the image out of flow.
+- **One rule about what counts as a page, applied everywhere.** A destination
+  with no `intro` is not a page — the index filtered on it but the detail
+  endpoint did not, so a bare map pin rendered a heading above a list of
+  absences.
+- **Content seeding states facts, not figures that move.** Migrations seed
+  geography, permits, seasons and culture. Never permit *fees*, flight
+  prices, or anything needing measurement. Seeding only fills a field that is
+  still **empty**, so admin edits survive restarts.
+- **Measure contrast against the worst case.** Text over a photo is only as
+  readable as the lightest photo someone uploads. That found a real 2.99:1
+  failure where 4.5:1 was needed.
+
+## Updated open items
+
+1. **320px horizontal overflow is unverified.** The browser sweep is too slow
+   in this environment to finish. Everything else is tested.
+2. **Nothing is committed.** This is still not a git repository.
+3. **Business facts nobody has supplied** are flagged in place on the pages
+   that would otherwise state them: company registration and address,
+   evacuation procedure per region, guide medical qualifications, liability
+   insurance, the 24-hour emergency contact, deposit amounts (20%
+   placeholders), and every operational impact figure.
+4. **Known-wrong tour data, left alone deliberately** rather than silently
+   "corrected": tour 7 (`dharran`) has region `bagmati`, a 61 m max altitude
+   and a best season typed as "autom"; Langtang is sold as 95 km against a
+   204.5 km itinerary; Pokhara 32 km against 13.4 km; `annapurna-epic`
+   3,800 m against Thorong La's 5,416 m; `upper-mustang` 320 km against its
+   own 208 km.
+5. The user's editor reformats `style.css` on save (one declaration per
+   line). Harmless, but it pushes trailing comments onto the next line, so a
+   few comments now sit above the wrong token.
+
+## New files worth knowing about
+
+| Area | Key files |
+|---|---|
+| Activity definitions, difficulty, filters | `backend/lib/adventures.js` |
+| Adventure/finder/activity API | `backend/routes/adventures.js` |
+| Destinations, FAQs, impact API | `backend/routes/content.js` |
+| Migrations (run every boot, idempotent) | `backend/migrations/001`–`004` |
+| Shared header + footer | `frontend/shell.js` |
+| Cards, difficulty, destination pages, finder | `frontend/adventures.js` |
+| Listing, destinations, finder, impact, guides, legal pages | `frontend/*.html` (19 new) |
+
+
+---
+
+## Session 4 additions
+
+The v2 brief was audited section by section (`V2_AUDIT.md`), the gaps were
+closed, pre-v2 pages were removed, and the whole site was user-tested.
+
+### 19. v2 gaps closed
+
+- **Payments no longer simulated.** `backend/lib/payments.js` is the single
+  switch. Both pay endpoints return 503 `payments_not_configured` before reading
+  the body; the frontend asks `GET /api/payments/config` before showing any card
+  form, and by default shows how to pay instead. `ALLOW_SIMULATED_PAYMENTS=1`
+  restores the old demo form, labelled SIMULATED.
+- **Checkout says "Place held"**, not "You're booked!".
+- **Enquiries**: `enquiries` table, `backend/routes/enquiries.js`, Contact page
+  form, admin **Enquiries** tab. No account needed; stored, never auto-emailed;
+  double-submits within 2 minutes are not filed twice.
+- **Itinerary days**: `description`, `accommodation`, `meals`, `notes` on
+  `tour_days` (migration 005), in the admin day editor and on the trip page.
+- Final booking CTA on the trip page; Region filter; When to Visit activity and
+  destination selectors; destination → filtered listing link; canonical URL on
+  every page (`shell.js` owns it).
+- `private-trips.html` takes `?tour=<slug>` and sends `tourId`, so requests from a
+  full or request-only departure arrive in the CRM "based on" that trip.
+
+### 20. Pages removed
+
+`build-adventure.html`, `cancellation-policy.html`, `safety-policy.html`,
+`tours.html` → `_archive/removed-pre-v2-pages-2026-10-26/` (with a README of what
+replaced each). ~270 lines of JS that only served them removed from `main.js`.
+
+### 21. Bugs found by testing
+
+- **Rider dashboard never booted.** `shell.js` overwrote `#dash-gate`'s id with
+  `main`. Fixed; all pages now have a real `<main>`.
+- **Private Trips unsubmittable when signed in** — `riderToken()` read the wrong
+  localStorage key. Now reads `hr_rider_token`.
+- Contact adventure list asked for `limit=200` (API max 100).
+- `.detail-layout` `1fr` → `minmax(0, 1fr)` (phone overflow, 1024px overflow).
+- `guide.html` shipped the demo guide's credentials pre-filled. Removed.
+
+## New conventions from this session
+
+- **Never ship credentials in a page**, even demo ones.
+- **Never rename an element you didn't create.** Other code finds it by id.
+- **`1fr` in a grid can't shrink.** Use `minmax(0, 1fr)` for any column holding
+  a scroller or long unbroken content.
+- **Payments: card data never touches this server.** Hosted fields + webhook only.
+- **Testing:** inject scripts with a *function* replacement
+  (`html.replace(re, () => s)`) — in a replacement string `$$` becomes `$`.
+  And never run a blocking `execFileSync` browser in the same process as the
+  proxy it talks to.
+
+## Updated open items
+
+1. **Payments** need a provider (Stripe or similar). Until then: admin records payments.
+2. **Business facts** still missing: registration/address, 24-hour emergency
+   contact, evacuation per region, guide medical qualifications, insurance,
+   confirmed deposits, real impact figures.
+3. **Outbound email** isn't connected (enquiries, finder saves, newsletter are stored only).
+4. **Five trips have wrong figures** (see PROJECT_GUIDE).
+5. **Route map** was removed in an earlier session at the owner's request; the
+   elevation profile remains.
+6. **Still not a git repository.**
+
+## New files
+
+| Area | File |
+|---|---|
+| Payment boundary | `backend/lib/payments.js` |
+| Enquiries API | `backend/routes/enquiries.js` |
+| Itinerary day fields | `backend/migrations/005-itinerary-day-details.js` |
+| v2 requirement audit | `V2_AUDIT.md` |
+| Removed pages | `_archive/removed-pre-v2-pages-2026-10-26/` |
 
 ---
 *Generated as a session handoff — paste into a new chat's first message to resume with full context.*

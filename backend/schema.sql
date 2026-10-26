@@ -653,3 +653,323 @@ CREATE TABLE IF NOT EXISTS newsletter_subscribers (
   email               TEXT UNIQUE NOT NULL,
   created_at          TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- ---------------------------------------------------------------------------
+-- TOUR_WAYPOINTS — the route map. An ordered list of real pinned positions
+-- along a tour, placed by an admin (by clicking the map in the admin panel's
+-- Route map editor, or by typing coordinates by hand).
+--
+-- Deliberately NOT the same thing as tour_days.overnight_lat/lng, which
+-- holds exactly ONE position per day: where the group sleeps. A route needs
+-- more than that — a trailhead, a pass crossed mid-morning, a viewpoint, a
+-- river crossing, a hazard to brief riders on. None of those can be stored
+-- as a tour_days row without inventing a whole day around them.
+--
+-- `seq` is the position along the route (1, 2, 3 …) and is what the map
+-- draws its trail through. `day_number` is optional and purely for grouping
+-- pins under a day in the UI — it is NOT the draw order, because several
+-- pins can share one day and a pin can belong to no particular day.
+-- Intentionally not UNIQUE(tour_id, seq): reordering would otherwise need a
+-- two-phase shuffle to dodge the constraint, which is a 500 waiting to
+-- happen. Reads order by seq then id, so ties are stable rather than fatal.
+--
+-- See the GPS DISCLAIMER in README.md — these are admin-entered planning
+-- positions, not surveyed GPX data, and must not be used for navigation.
+-- Straight-line distances between consecutive pins are computed on read
+-- (see haversineKm in lib/geo.js) and are explicitly NOT trail distance;
+-- the real per-day riding distance is tour_days.distance_km.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS tour_waypoints (
+  id                  INTEGER PRIMARY KEY,
+  tour_id             INTEGER NOT NULL REFERENCES tours(id) ON DELETE CASCADE,
+  seq                 INTEGER NOT NULL,
+  day_number          INTEGER,
+  name                TEXT NOT NULL,
+  kind                TEXT NOT NULL DEFAULT 'waypoint'
+                        CHECK (kind IN ('start','waypoint','pass','viewpoint','overnight','hazard','finish')),
+  lat                 REAL NOT NULL CHECK (lat BETWEEN -90 AND 90),
+  lng                 REAL NOT NULL CHECK (lng BETWEEN -180 AND 180),
+  elevation_m         INTEGER,
+  notes               TEXT,
+  created_at          TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_tour_waypoints_tour ON tour_waypoints(tour_id, seq);
+
+-- ---------------------------------------------------------------------------
+-- TOUR_ROUTE_LEGS — the road/trail-following line between two consecutive
+-- route pins, as returned by a real routing engine (see lib/routing.js).
+--
+-- This is what makes the tour map draw an actual trail rather than a
+-- straight line between pins: the admin drops pins 1-2-3-4 and the route
+-- between them is snapped to the roads and tracks in OpenStreetMap, the
+-- way a consumer maps app does it.
+--
+-- Cached here rather than fetched per page view for three reasons: the
+-- public tour page must not depend on a third-party routing service being
+-- up, a tour page would otherwise fire one routing request per leg on every
+-- single visit (which the public routing instance would rightly throttle),
+-- and the geometry is stable until a pin actually moves.
+--
+-- from_lat/lng and to_lat/lng record the pin positions this leg was
+-- computed FROM. That is the cache key: if a pin is dragged, its legs no
+-- longer match and get recomputed, rather than leaving a line that silently
+-- no longer joins its pins.
+--
+-- status:
+--   'routed'   — a real road/trail route was found; geometry_json holds it
+--   'no_route' — the engine could not connect these two points (nothing
+--                routable in between). The map falls back to a dashed
+--                straight line for this leg and says so.
+--   'error'    — the routing service failed or timed out. Same fallback.
+--
+-- snap_from_m/snap_to_m are how far the engine had to move each endpoint to
+-- reach the nearest routable way. A large value means the pin isn't on a
+-- mapped road, so the drawn route starts somewhere other than the pin — the
+-- admin editor surfaces this so the pin can be nudged onto the trail.
+--
+-- geometry_json is [[lat,lng], ...], simplified (lib/routing.js) and rounded
+-- to 5 decimals — about a metre, far finer than a hand-placed pin — because
+-- the raw geometry for one leg can be well over a thousand points.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS tour_route_legs (
+  id                  INTEGER PRIMARY KEY,
+  tour_id             INTEGER NOT NULL REFERENCES tours(id) ON DELETE CASCADE,
+  from_waypoint_id    INTEGER NOT NULL REFERENCES tour_waypoints(id) ON DELETE CASCADE,
+  to_waypoint_id      INTEGER NOT NULL REFERENCES tour_waypoints(id) ON DELETE CASCADE,
+  status              TEXT NOT NULL CHECK (status IN ('routed','no_route','error')),
+  provider            TEXT,
+  profile             TEXT,
+  distance_m          REAL,
+  duration_s          REAL,
+  snap_from_m         REAL,
+  snap_to_m           REAL,
+  from_lat            REAL NOT NULL,
+  from_lng            REAL NOT NULL,
+  to_lat              REAL NOT NULL,
+  to_lng              REAL NOT NULL,
+  geometry_json       TEXT,
+  error               TEXT,
+  computed_at         TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(from_waypoint_id, to_waypoint_id)
+);
+CREATE INDEX IF NOT EXISTS idx_route_legs_tour ON tour_route_legs(tour_id);
+
+-- ===========================================================================
+-- UNIVERSAL ADVENTURE MODEL — additions
+--
+-- The platform launched mountain-bike-only, and `tours` carried that in its
+-- bones: riding_style, distance_km and elevation_gain_m as NOT NULL columns
+-- with no notion of what activity a trip even was. Adding trekking by
+-- copying the table would have given two tables, two detail templates and
+-- two of every query — the duplication the brief specifically rules out.
+--
+-- The shape used instead: every adventure keeps ONE row in `tours` carrying
+-- the universal fields (title, duration, difficulty, price, season, format,
+-- accommodation), and anything that only makes sense for one activity lives
+-- in activity_data_json, validated per activity by ACTIVITY_FIELDS in
+-- backend/lib/adventures.js. A new activity is then a row in
+-- `activity_types` plus an entry in that map — no migration, no new table,
+-- no second detail page. See README section 4.
+--
+-- The columns themselves are added by the migration block in db.js, because
+-- CREATE TABLE IF NOT EXISTS above will not alter the table that already
+-- exists in every deployed database. They are listed here, as comments, so
+-- this file still reads as the full picture of the tours table:
+--
+--   activity, destination_slug, description_full, trip_format,
+--   accommodation_type, accommodation_notes, elevation_loss_m, deposit_cents,
+--   difficulty_fitness, difficulty_technical, difficulty_altitude,
+--   highlights_json, suitability_*, mandatory_charges_json,
+--   optional_extras_json, booking_insurance, booking_visa, booking_health,
+--   booking_age, activity_data_json, impact_json, faqs_json, published,
+--   updated_at
+-- ===========================================================================
+
+-- Which activities the site offers, and which are switched on. A new
+-- adventure category is enabled by flipping `enabled` here (admin panel ->
+-- Activities), not by deploying code: the nav, the finder, the filters and
+-- the adventures listing all read this table.
+CREATE TABLE IF NOT EXISTS activity_types (
+  id            INTEGER PRIMARY KEY,
+  slug          TEXT UNIQUE NOT NULL,
+  name          TEXT NOT NULL,
+  -- Plural label for nav and listing headings ("Mountain Biking" vs
+  -- "Mountain Bike Adventures"), kept as data so copy changes don't need code.
+  plural_label  TEXT,
+  summary       TEXT,
+  icon          TEXT,
+  -- 0 keeps the activity in the data model and the admin panel but hides it
+  -- from the public site — how trekking sits until High Route has real
+  -- trekking trips to sell, rather than an empty category page.
+  enabled       INTEGER NOT NULL DEFAULT 0,
+  sort_order    INTEGER NOT NULL DEFAULT 0,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Site-wide and per-category FAQs. Separate from tours.faqs_json, which
+-- holds the questions specific to one adventure: this is the FAQ page, the
+-- destination-page FAQ blocks and the "before you book" questions that are
+-- the same whichever trip you pick.
+CREATE TABLE IF NOT EXISTS faqs (
+  id            INTEGER PRIMARY KEY,
+  question      TEXT NOT NULL,
+  answer        TEXT NOT NULL,
+  -- booking | pricing | difficulty | equipment | accommodation | transport
+  -- | safety | weather | cancellation | general. Free text rather than a
+  -- CHECK so an admin can add a category without a migration; the FAQ page
+  -- groups by whatever distinct values exist.
+  category      TEXT NOT NULL DEFAULT 'general',
+  -- Optional scoping: an FAQ can apply to one activity, one destination, or
+  -- (both null) the whole site.
+  activity      TEXT,
+  destination_slug TEXT,
+  sort_order    INTEGER NOT NULL DEFAULT 0,
+  published     INTEGER NOT NULL DEFAULT 1,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Operational impact measurement. One row per departure (or per tour, for
+-- things measured at that level), holding what was actually spent and where.
+--
+-- Deliberately a table of records rather than a few summary columns on
+-- `tours`: the Our Impact page's annual figures have to be defensible, and
+-- "we spent X with local suppliers in 2026" is only defensible if it is the
+-- sum of departures that actually ran. Nothing here is estimated or
+-- extrapolated by the code — a field left null reads as "not recorded" on
+-- the public page, never as zero.
+CREATE TABLE IF NOT EXISTS impact_records (
+  id                    INTEGER PRIMARY KEY,
+  tour_id               INTEGER REFERENCES tours(id) ON DELETE SET NULL,
+  departure_id          INTEGER REFERENCES departures(id) ON DELETE SET NULL,
+  -- The year the spending belongs to, for annual reporting. Stored rather
+  -- than derived from the departure date so a trip that straddles New Year
+  -- can be attributed deliberately.
+  year                  INTEGER NOT NULL,
+  local_supplier_spend_cents  INTEGER,
+  guide_wages_cents           INTEGER,
+  local_accommodation_nights  INTEGER,
+  community_contribution_cents INTEGER,
+  trail_contribution_cents    INTEGER,
+  waste_initiatives     TEXT,
+  single_use_plastic_notes TEXT,
+  transport_km          REAL,
+  -- bus | jeep | domestic_flight | mixed | none
+  transport_type        TEXT,
+  group_size            INTEGER,
+  currency              TEXT NOT NULL DEFAULT 'EUR',
+  notes                 TEXT,
+  recorded_by           TEXT,
+  created_at            TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Published annual progress figures for the Our Impact page.
+--
+-- `evidenced` is the point of this table. A metric with evidenced = 0 is
+-- shown as "not yet verified" or withheld entirely rather than printed as a
+-- fact — the brief forbids publishing sustainability numbers that cannot be
+-- backed up, and a boolean an admin has to tick is a harder thing to fudge
+-- than a note in a spreadsheet somewhere.
+CREATE TABLE IF NOT EXISTS impact_metrics (
+  id            INTEGER PRIMARY KEY,
+  year          INTEGER NOT NULL,
+  metric_key    TEXT NOT NULL,
+  label         TEXT NOT NULL,
+  value         TEXT,
+  unit          TEXT,
+  -- local_economy | community | environment | conservation
+  dimension     TEXT NOT NULL DEFAULT 'local_economy',
+  notes         TEXT,
+  evidenced     INTEGER NOT NULL DEFAULT 0,
+  source        TEXT,
+  sort_order    INTEGER NOT NULL DEFAULT 0,
+  published     INTEGER NOT NULL DEFAULT 1,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(year, metric_key)
+);
+
+-- Adventure Finder answers, saved only when a visitor explicitly asks for
+-- their recommendations by email.
+--
+-- The finder itself works anonymously and stores nothing: this table is
+-- written to only by the optional "email me these" form under the results.
+-- `email_status` is 'stored' and not 'sent', because no outbound mail is
+-- configured — the row is a real saved lead, and the UI says exactly that
+-- rather than claiming an email is on its way. See lib/email.js.
+CREATE TABLE IF NOT EXISTS finder_leads (
+  id            INTEGER PRIMARY KEY,
+  email         TEXT NOT NULL,
+  activity      TEXT,
+  difficulty    TEXT,
+  duration      TEXT,
+  month         TEXT,
+  result_count  INTEGER,
+  -- stored | queued | sent | failed
+  email_status  TEXT NOT NULL DEFAULT 'stored',
+  created_at    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_faqs_category ON faqs(category);
+CREATE INDEX IF NOT EXISTS idx_impact_records_year ON impact_records(year);
+CREATE INDEX IF NOT EXISTS idx_impact_metrics_year ON impact_metrics(year);
+
+-- ---------------------------------------------------------------------------
+-- DESTINATION_IMAGES — the photo gallery on a destination page.
+--
+-- A separate table rather than another `category` on gallery_images, because
+-- that column carries a CHECK constraint ('hero','gallery','guide','tour')
+-- and SQLite cannot ALTER a CHECK — widening it means rebuilding the table,
+-- which is a far bigger operation than one new table for one new use.
+--
+-- A destination page also shows the photos from the trips that run there
+-- (gallery_images joined through tours.destination_slug), so this table is
+-- for images that belong to the PLACE rather than to a trip: the town, the
+-- monastery, the airstrip, the valley nobody rides through. Rows here are
+-- shown first and the trip photos after, each labelled with where it is from,
+-- so the page never implies a trip photo was taken somewhere it was not.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS destination_images (
+  id             INTEGER PRIMARY KEY,
+  destination_id INTEGER NOT NULL REFERENCES destinations(id) ON DELETE CASCADE,
+  image_url      TEXT NOT NULL,
+  caption        TEXT,
+  credit         TEXT,
+  sort_order     INTEGER NOT NULL DEFAULT 0,
+  created_at     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_destination_images_dest
+  ON destination_images(destination_id, sort_order);
+
+-- ---------------------------------------------------------------------------
+-- ENQUIRIES — the Contact page's "ask us a question" form.
+--
+-- Separate from custom_requests on purpose. A custom request is a trip being
+-- designed: it needs an account, it moves through a proposal pipeline, it
+-- ends in a booking. An enquiry is a question — "is the October Mustang
+-- departure suitable for a first trip at altitude?" — from somebody who has
+-- not signed up and should not have to in order to ask it.
+--
+-- `email_status` is 'stored', never 'sent': no outbound mail is configured,
+-- and the form says so rather than implying a reply is already on its way.
+-- An admin replies from their own mailbox and marks the row replied.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS enquiries (
+  id              INTEGER PRIMARY KEY,
+  name            TEXT NOT NULL,
+  email           TEXT NOT NULL,
+  phone           TEXT,
+  topic           TEXT NOT NULL DEFAULT 'trip' CHECK (topic IN ('trip','booking','other')),
+  tour_id         INTEGER REFERENCES tours(id) ON DELETE SET NULL,
+  departure_id    INTEGER REFERENCES departures(id) ON DELETE SET NULL,
+  preferred_date  TEXT,
+  travellers      INTEGER,
+  requirements    TEXT,
+  message         TEXT NOT NULL,
+  status          TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new','replied','closed')),
+  admin_note      TEXT,
+  email_status    TEXT NOT NULL DEFAULT 'stored',
+  ip              TEXT,
+  created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_enquiries_status ON enquiries(status, created_at);

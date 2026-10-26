@@ -1,12 +1,22 @@
 'use strict';
 const crypto = require('crypto');
 const { get, run } = require('../db');
-const { ok, created, badRequest, unauthorized, sendJson, hashPassword, verifyPassword, hashToken, rateLimited, clientIp } = require('../lib/util');
+const { ok, created, badRequest, unauthorized, sendJson, hashPassword, verifyPassword, hashToken, rateLimited, clientIp, isEmail } = require('../lib/util');
 const { createSession, destroySession, tokenFromRequest, requireAuth } = require('../lib/auth');
 const { sendVerificationEmail } = require('../lib/email');
 
 const VERIFICATION_MINUTES = 15;
 const VERIFICATION_MAX_ATTEMPTS = 5;
+
+/** Looks a rider up by email, case-insensitively.
+ *  Addresses are stored exactly as typed (so they display back the way the
+ *  rider wrote them), but email addresses aren't case-sensitive in practice:
+ *  signing up as "Rahul@Example.com" and then signing in as
+ *  "rahul@example.com" used to be two different accounts to this lookup,
+ *  which read as "wrong password" with no way for the rider to work out why. */
+function findRiderByEmail(email) {
+  return get('SELECT * FROM riders WHERE email = ? COLLATE NOCASE', [String(email || '').trim()]);
+}
 
 // Shared brute-force guard for every login endpoint below: 8 attempts per
 // 5 minutes per (ip + email). Keyed on the *attempted* email so one IP can't
@@ -38,17 +48,25 @@ function register(router) {
   router.post('/api/auth/register', async (req, res) => {
     const b = req.body || {};
     if (!b.email || !b.password || !b.name) return badRequest(res, 'name, email and password are required');
+    const email = String(b.email).trim();
+    // Verification is mandatory, so the code goes to whatever address is typed
+    // here and nowhere else. Without this check a typo ("rahul@gmailcom")
+    // created an account that could never be verified and never be signed into
+    // — and "resend code" just posted it to the same dead address again.
+    if (!isEmail(email)) return badRequest(res, 'That email address doesn\'t look right — check it and try again.');
+    if (!String(b.name).trim()) return badRequest(res, 'name cannot be empty');
     if (String(b.password).length < 8) return badRequest(res, 'password must be at least 8 characters');
-    if (get('SELECT id FROM riders WHERE email = ?', [b.email])) return badRequest(res, 'An account with this email already exists');
+    if (findRiderByEmail(email)) return badRequest(res, 'An account with this email already exists');
     const { hash, salt } = hashPassword(b.password);
+    const name = String(b.name).trim();
     const id = run(
       `INSERT INTO riders (name, email, phone, country, riding_experience, password_hash, password_salt)
        VALUES (?,?,?,?,?,?,?)`,
-      [b.name, b.email, b.phone || null, b.country || null, b.ridingExperience || null, hash, salt]
+      [name, email, b.phone || null, b.country || null, b.ridingExperience || null, hash, salt]
     ).lastInsertRowid;
-    await issueVerificationCode({ id, email: b.email, name: b.name });
+    await issueVerificationCode({ id, email, name });
     created(res, {
-      pending_verification: true, rider: { id, name: b.name, email: b.email },
+      pending_verification: true, rider: { id, name, email },
       message: 'Check your email for a 6-digit verification code to activate your account.',
     });
   });
@@ -60,13 +78,24 @@ function register(router) {
     if (rateLimited('verify:' + clientIp(req) + ':' + String(email).toLowerCase())) {
       return sendJson(res, 429, { error: 'Too many attempts. Try again in a few minutes.' });
     }
-    const rider = get('SELECT * FROM riders WHERE email = ?', [email]);
+    const rider = findRiderByEmail(email);
     if (!rider) return badRequest(res, 'Invalid email or code');
-    // Already verified (e.g. they verified in another tab, or replayed an
-    // old email) — just let them straight in rather than erroring.
+    // Already verified — this endpoint must NEVER hand out a session here.
+    //
+    // It previously did, "so they aren't blocked if they verified in another
+    // tab", but a verified account has no outstanding code left to check, so
+    // that branch skipped the code comparison entirely: posting any 6 digits
+    // (or any string at all) with a known email address returned a working
+    // rider session — a full account takeover needing nothing but the email.
+    // The only safe answer is to send them to the password sign-in; the
+    // already_verified flag lets the modal do that for them automatically
+    // (see showSignInStep in frontend/main.js) so nobody hits a dead end.
     if (rider.email_verified_at) {
-      const session = createSession('rider', rider.id);
-      return ok(res, { rider: { id: rider.id, name: rider.name, email: rider.email }, ...session });
+      return sendJson(res, 409, {
+        error: 'This email is already verified — sign in with your password instead.',
+        already_verified: true,
+        email: rider.email,
+      });
     }
     const pending = get('SELECT * FROM email_verifications WHERE rider_id = ? ORDER BY id DESC LIMIT 1', [rider.id]);
     if (!pending) return badRequest(res, 'No verification code is pending for this account — request a new one.');
@@ -89,9 +118,14 @@ function register(router) {
     if (rateLimited('resend-verify:' + clientIp(req) + ':' + String(email).toLowerCase(), { max: 3, windowMs: 15 * 60 * 1000 })) {
       return sendJson(res, 429, { error: 'Too many requests. Try again in a few minutes.' });
     }
-    const rider = get('SELECT * FROM riders WHERE email = ?', [email]);
+    const rider = findRiderByEmail(email);
     if (!rider) return badRequest(res, 'No account with this email');
-    if (rider.email_verified_at) return badRequest(res, 'This email is already verified — sign in instead.');
+    if (rider.email_verified_at) {
+      return sendJson(res, 409, {
+        error: 'This email is already verified — sign in with your password instead.',
+        already_verified: true, email: rider.email,
+      });
+    }
     await issueVerificationCode(rider);
     ok(res, { sent: true });
   });
@@ -100,7 +134,7 @@ function register(router) {
   router.post('/api/auth/login', (req, res) => {
     const { email, password } = req.body || {};
     if (loginRateLimited(req, email)) return res.writeHead(429, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'Too many attempts. Try again in a few minutes.' }));
-    const rider = get('SELECT * FROM riders WHERE email = ?', [email || '']);
+    const rider = findRiderByEmail(email);
     if (!rider || !verifyPassword(password || '', rider.password_hash, rider.password_salt)) {
       return unauthorized(res, 'Invalid email or password');
     }
@@ -165,7 +199,7 @@ function register(router) {
   router.post('/api/guide/login', (req, res) => {
     const { email, password } = req.body || {};
     if (loginRateLimited(req, email)) return res.writeHead(429, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'Too many attempts. Try again in a few minutes.' }));
-    const guide = get('SELECT * FROM guides WHERE email = ?', [email || '']);
+    const guide = get('SELECT * FROM guides WHERE email = ? COLLATE NOCASE', [String(email || '').trim()]);
     if (!guide || !guide.password_hash || !verifyPassword(password || '', guide.password_hash, guide.password_salt)) {
       return unauthorized(res, 'Invalid email or password. (Demo guides have no password set — see README to set one.)');
     }
@@ -177,7 +211,7 @@ function register(router) {
   router.post('/api/admin/login', (req, res) => {
     const { email, password } = req.body || {};
     if (loginRateLimited(req, email)) return res.writeHead(429, { 'Content-Type': 'application/json' }).end(JSON.stringify({ error: 'Too many attempts. Try again in a few minutes.' }));
-    const admin = get('SELECT * FROM admins WHERE email = ?', [email || '']);
+    const admin = get('SELECT * FROM admins WHERE email = ? COLLATE NOCASE', [String(email || '').trim()]);
     if (!admin || !verifyPassword(password || '', admin.password_hash, admin.password_salt)) {
       return unauthorized(res, 'Invalid email or password');
     }

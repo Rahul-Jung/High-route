@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All Adventures in Nepal | High Route</title>
+<meta name="description" content="Every High Route adventure in Nepal: mountain biking, trekking and multi-activity trips, filterable by difficulty, duration, destination and month.">
+<meta property="og:title" content="All Adventures in Nepal | High Route">
+<meta property="og:description" content="Every High Route adventure in Nepal: mountain biking, trekking and multi-activity trips, filterable by difficulty, duration, destination and month.">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div data-site-header></div>
+
+<main id="main">
+<header class="page-head">
+  <div class="wrap">
+    <p class="crumbs"><a href="index.html">Home</a><span>/</span>Adventures</p>
+    <p class="page-eyebrow">Nepal · Himalaya</p>
+    <h1 id="adv-page-title">All Adventures</h1>
+    <p class="page-lede" id="adv-page-lede">Every trip we run, with the figures that actually tell you whether it suits you
+      — difficulty broken into fitness, technical demand and altitude, real departure dates, and prices
+      with nothing hidden behind an asterisk.</p>
+    <div class="page-head-ctas">
+      <a href="finder.html" class="btn btn-solid">Answer four questions instead</a>
+      <a href="difficulty-guide.html" class="btn btn-ghost">How difficulty works</a>
+    </div>
+  </div>
+</header>
+
+<section class="section" id="adv-listing">
+  <div class="wrap">
+    <div class="listing-layout">
+      <aside class="filters-panel" id="adv-filters-panel" aria-label="Filter adventures">
+        <h2 class="dash-section-title">Filter
+          <button type="button" class="filters-toggle" id="adv-filters-toggle"
+                  aria-expanded="true" aria-controls="adv-filters">Hide</button>
+        </h2>
+        <form id="adv-filters" onsubmit="return false"></form>
+      </aside>
+
+      <div>
+        <div class="listing-head">
+          <p class="result-count" id="adv-count" role="status" aria-live="polite"></p>
+          <label class="sort-field">Sort by
+            <select id="adv-sort">
+              <option value="featured">Featured</option>
+              <option value="price-asc">Price: low to high</option>
+              <option value="price-desc">Price: high to low</option>
+              <option value="duration-asc">Duration: short to long</option>
+              <option value="duration-desc">Duration: long to short</option>
+              <option value="difficulty-asc">Difficulty: easiest first</option>
+              <option value="difficulty-desc">Difficulty: hardest first</option>
+              <option value="name">Name</option>
+            </select>
+          </label>
+        </div>
+        <div class="active-filters" id="adv-chips"></div>
+        <div id="adv-results"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+  <noscript>
+    <div class="wrap"><div class="note note-action"><div><p><strong>The adventure catalogue is loaded from the live database, which needs JavaScript.</strong>
+      With it switched off this page cannot show you real departures or prices, and showing you stale ones copied into the
+      HTML would be worse. <a href="adventures.html">adventures.html</a> has the same information once scripting is on.</p></div></div></div>
+  </noscript>
+
+<section class="section section-forest">
+  <div class="wrap text-center">
+    <div class="section-head"><h2>Nothing quite right?</h2></div>
+    <p style="max-width:54ch;margin:0 auto 24px">Tell us what you want to do, when, and how hard — and we will build it
+      around your group instead of making you fit a departure.</p>
+    <a href="private-trips.html" class="btn btn-solid">Plan a Custom Trip</a>
+  </div>
+</section>
+</main>
+
+<div data-site-footer></div>
+
+<script src="shell.js"></script>
+<script src="config.js"></script>
+<script src="main.js"></script>
+<script src="adventures.js"></script>
+</body>
+</html>

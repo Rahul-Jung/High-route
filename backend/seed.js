@@ -156,16 +156,40 @@ function seed() {
   mustangDays.forEach(d => insertDay(mustangId, d));
 
   // --- Departures -------------------------------------------------------------
-  const dep = (tourId, guideId, start, end, capacity, booked, status) =>
-    run(`INSERT INTO departures (tour_id, guide_id, start_date, end_date, capacity, seats_booked, status) VALUES (?,?,?,?,?,?,?)`,
+  // Dates are relative to whenever the database is first seeded, NOT hardcoded.
+  // They used to be fixed calendar dates, which were all comfortably in the
+  // future on the day they were written and then quietly rotted: by the time
+  // anyone set the project up fresh again, five of the six had already passed,
+  // so a brand-new install showed "No upcoming dates" on nearly every tour,
+  // an almost-empty homepage departures table, and nothing bookable — which
+  // looks like a broken site rather than demo data that aged out.
+  //
+  // daysFromNow is the start offset; the end date is derived from the tour's
+  // own duration_days, exactly the way routes/departures.js computeEndDate()
+  // does it, so a seeded departure's span always matches what its tour promises.
+  const isoDay = offsetDays => {
+    const d = new Date();
+    d.setUTCHours(0, 0, 0, 0);
+    d.setUTCDate(d.getUTCDate() + offsetDays);
+    return d.toISOString().slice(0, 10);
+  };
+  const dep = (tourId, guideId, daysFromNow, durationDays, capacity, booked, status) => {
+    const start = isoDay(daysFromNow);
+    const end = isoDay(daysFromNow + durationDays - 1);
+    return run(`INSERT INTO departures (tour_id, guide_id, start_date, end_date, capacity, seats_booked, status) VALUES (?,?,?,?,?,?,?)`,
       [tourId, guideId, start, end, capacity, booked, status]).lastInsertRowid;
+  };
 
-  const mustangDep = dep(mustangId, tashi, '2026-10-18', '2026-10-27', 10, 4, 'open');
-  dep(annapurnaId, pemba, '2026-09-25', '2026-10-04', 10, 10, 'full');
-  dep(kathmanduId, tashi, '2026-09-12', '2026-09-14', 12, 8, 'few_spaces');
-  dep(langtangId, pemba, '2026-09-30', '2026-10-04', 10, 2, 'open');
-  dep(manasluId, tashi, '2026-11-03', '2026-11-14', 8, 0, 'request_only');
-  dep(pokharaId, pemba, '2026-09-19', '2026-09-20', 12, 2, 'open');
+  // Spread across the next ~6 weeks, keeping the original mix of availability
+  // states so every status pip and badge on the public site has a real example.
+  // Guide assignments avoid overlapping dates for the same guide, the rule
+  // findGuideConflict() in routes/departures.js enforces on anything added later.
+  const mustangDep = dep(mustangId, tashi, 24, 10, 10, 4, 'open');          // open, part-full
+  dep(annapurnaId, pemba, 32, 10, 10, 10, 'full');                          // sold out
+  dep(kathmanduId, tashi, 11, 3, 12, 8, 'few_spaces');                      // nearly full
+  dep(langtangId, pemba, 18, 5, 10, 2, 'open');                             // plenty of room
+  dep(manasluId, tashi, 45, 12, 8, 0, 'request_only');                       // dates on request
+  dep(pokharaId, pemba, 7, 2, 12, 2, 'open');                               // soonest departure
 
   // --- Reviews -----------------------------------------------------------------
   run(`INSERT INTO reviews (tour_id, rider_name, riding_score, guide_score, scenery_score, organization_score, accommodation_score, would_recommend, quote)

@@ -9,19 +9,11 @@
 </head>
 <body>
 
-<header class="site-header">
-  <a href="index.html" class="logo"><span class="mark">◆</span> HIGH ROUTE</a>
-  <nav>
-    <ul class="main-nav">
-      <li><a href="tours.html">Tours</a></li>
-      <li><a href="calendar.html">Calendar</a></li>
-      <li><a href="dashboard.html">My account</a></li>
-    </ul>
-  </nav>
-  <div class="header-actions">
-    <button class="nav-toggle" aria-label="Menu">☰</button>
-  </div>
-</header>
+<div data-site-header></div>
+
+<!-- The main landmark. Without one, shell.js used to promote the first block
+     here and overwrite its id, which is what broke the dashboard. -->
+<main id="main">
 
 <section class="page-hero" style="padding-bottom:24px;">
   <div class="topo-bg"></div>
@@ -86,11 +78,11 @@
           <span class="q-num">Step 5 of 5</span>
           <h2>Review &amp; pay deposit</h2>
           <div id="cco-review"></div>
-          <div class="dash-field"><label>Name on card</label><input class="checkout-input" id="cco-pay-name" required autocomplete="cc-name"></div>
-          <div class="dash-field"><label>Card number</label><input class="checkout-input" id="cco-pay-number" required inputmode="numeric" autocomplete="cc-number" placeholder="4242 4242 4242 4242"></div>
+          <div class="dash-field"><label for="cco-pay-name">Name on card</label><input class="checkout-input" id="cco-pay-name" required autocomplete="cc-name"></div>
+          <div class="dash-field"><label for="cco-pay-number">Card number</label><input class="checkout-input" id="cco-pay-number" required inputmode="numeric" autocomplete="cc-number" placeholder="4242 4242 4242 4242"></div>
           <div class="dash-row">
-            <div class="dash-field"><label>Expiry (MM/YY)</label><input class="checkout-input" id="cco-pay-expiry" required autocomplete="cc-exp" placeholder="12/28"></div>
-            <div class="dash-field"><label>CVV</label><input class="checkout-input" id="cco-pay-cvv" required inputmode="numeric" autocomplete="cc-csc" placeholder="123"></div>
+            <div class="dash-field"><label for="cco-pay-expiry">Expiry (MM/YY)</label><input class="checkout-input" id="cco-pay-expiry" required autocomplete="cc-exp" placeholder="12/28"></div>
+            <div class="dash-field"><label for="cco-pay-cvv">CVV</label><input class="checkout-input" id="cco-pay-cvv" required inputmode="numeric" autocomplete="cc-csc" placeholder="123"></div>
           </div>
           <p class="checkout-error hidden" id="cco-confirm-error"></p>
           <div class="checkout-nav"><button class="btn btn-ghost" data-cco-back>Back</button><button class="btn btn-solid" id="cco-confirm-btn">Pay deposit &amp; confirm</button></div>
@@ -105,8 +97,8 @@
         <div class="ws-row"><span id="ccs-deposit-label">Deposit due now</span><span id="ccs-deposit">—</span></div>
         <div class="ws-row"><span>Balance due later</span><span id="ccs-balance">—</span></div>
         <p style="font-size:12px; color:var(--paper-dim); margin-top:18px; line-height:1.6;">
-          This deposit is charged now to confirm your private departure — demo checkout, no real card is charged.
-          <a href="cancellation-policy.html">Cancellation terms</a>.
+          Nothing is charged on this page unless a payment provider is connected.
+          <a href="booking-conditions.html#cancel-you">Cancellation terms</a>.
         </p>
       </aside>
 
@@ -128,15 +120,11 @@
   </div>
 </div>
 
-<footer>
-  <div class="wrap">
-    <div class="footer-bottom">
-      <span>© 2026 High Route MTB, Kathmandu</span>
-      <span><a href="index.html">Back to the homepage</a></span>
-    </div>
-  </div>
-</footer>
+</main>
 
+<div data-site-footer></div>
+
+<script src="shell.js"></script>
 <script src="config.js"></script>
 <script src="main.js"></script>
 </body>

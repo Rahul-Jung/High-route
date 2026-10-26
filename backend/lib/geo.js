@@ -118,6 +118,43 @@ const NEPAL_DISTRICTS = [
   { key: 'Kanchanpur', lat: 28.9333, lng: 80.1667, places: [{ name: 'Bhimdatta' }, { name: 'Mahendranagar' }] },
 ];
 
+// Mean Earth radius in km (IUGG). Good to ~0.3% anywhere on the globe,
+// which is far tighter than the precision of a hand-placed map pin.
+const EARTH_RADIUS_KM = 6371.0088;
+
+const toRad = deg => (deg * Math.PI) / 180;
+
+/** Great-circle ("as the crow flies") distance in km between two
+ *  {lat, lng} points, via the haversine formula.
+ *
+ *  IMPORTANT — this is a STRAIGHT LINE between two pins. It is NOT how far
+ *  anyone rides between them: a real trail switchbacks, contours around
+ *  ridges and climbs, so actual riding distance is always longer, often by
+ *  a lot. Anything surfacing this number must say "straight line" (the
+ *  route map's hover tooltip does). The real per-day riding distance is the
+ *  admin-entered tour_days.distance_km, which is a different number on
+ *  purpose and must never be replaced by this one.
+ *
+ *  Returns null rather than NaN if either point is missing a usable
+ *  coordinate, so a half-filled waypoint shows "no distance" instead of
+ *  poisoning a total with NaN. */
+function haversineKm(a, b) {
+  if (!a || !b) return null;
+  // Number(null) is 0 and Number('') is 0 — both finite — so coercing first
+  // and range-checking after would read a waypoint with a missing lng as
+  // longitude 0 (the Gulf of Guinea) and happily return ~8000 km. Reject the
+  // empty values before coercing.
+  const num = v => (v === null || v === undefined || v === '' ? NaN : Number(v));
+  const lat1 = num(a.lat), lng1 = num(a.lng);
+  const lat2 = num(b.lat), lng2 = num(b.lng);
+  if (![lat1, lng1, lat2, lng2].every(Number.isFinite)) return null;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const h = Math.sin(dLat / 2) ** 2 +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
 function slugify(text) {
   return String(text).toLowerCase().trim()
     .replace(/[^a-z0-9]+/g, '-')
@@ -194,4 +231,4 @@ function resolveDistrict(input) {
   return bestDistance <= threshold ? best : null;
 }
 
-module.exports = { NEPAL_DISTRICTS, resolveDistrict, slugify, levenshtein };
+module.exports = { NEPAL_DISTRICTS, resolveDistrict, slugify, levenshtein, haversineKm };

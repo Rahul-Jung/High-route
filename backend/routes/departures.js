@@ -1,7 +1,8 @@
 'use strict';
 const { all, get, run } = require('../db');
-const { ok, notFound, badRequest } = require('../lib/util');
+const { ok, created, notFound, badRequest, isIsoDate, validateNumbers } = require('../lib/util');
 const { requireAdmin, sessionFromRequest } = require('../lib/auth');
+const { capacityStatus } = require('./bookings');
 
 function statusLabel(status) {
   return { open: 'Open', few_spaces: 'Few spaces', full: 'Full', request_only: 'Request-only', cancelled: 'Cancelled' }[status] || status;
@@ -54,6 +55,18 @@ function register(router) {
   // table uses this so it only ever shows real, bookable, admin-entered dates.
   router.get('/api/departures', (req, res) => {
     const { month, tourId, upcoming, limit } = req.query;
+    // Validated before anything is bound: Number('abc') is NaN, and a NaN
+    // bound into SQLite's LIMIT raised "datatype mismatch" — a bare 500 on a
+    // public, unauthenticated endpoint that the homepage, the calendar and the
+    // admin Departures tab all call.
+    const nums = validateNumbers({
+      tourId: [tourId, { min: 1 }],
+      limit: [limit, { min: 1, max: 200 }],
+    });
+    if (nums.error) return badRequest(res, nums.error);
+    if (month !== undefined && month !== '' && !/^\d{4}-(0[1-9]|1[0-2])$/.test(String(month))) {
+      return badRequest(res, 'month must be in YYYY-MM form, e.g. 2026-09');
+    }
     const session = sessionFromRequest(req);
     const isAdmin = session && session.subject_type === 'admin';
     const riderId = session && session.subject_type === 'rider' ? session.subject_id : null;
@@ -76,10 +89,10 @@ function register(router) {
       }
     }
     if (month) { sql += " AND strftime('%Y-%m', d.start_date) = ?"; params.push(month); }
-    if (tourId) { sql += ' AND d.tour_id = ?'; params.push(Number(tourId)); }
+    if (nums.values.tourId !== null) { sql += ' AND d.tour_id = ?'; params.push(nums.values.tourId); }
     if (upcoming) { sql += " AND date(d.start_date) >= date('now') AND d.status != 'cancelled'"; }
     sql += ' ORDER BY d.start_date ASC';
-    if (limit) { sql += ' LIMIT ?'; params.push(Number(limit)); }
+    if (nums.values.limit !== null) { sql += ' LIMIT ?'; params.push(nums.values.limit); }
     const rows = all(sql, params).map(r => ({
       ...r,
       // Overrides the joined tours.duration_days (still useful elsewhere as
@@ -125,13 +138,36 @@ function register(router) {
     });
   });
 
-  // PATCH /api/departures/:id/availability  { status }  — used by the admin dashboard demo
+  // PATCH /api/departures/:id/availability  { status } — the one place a
+  // departure's status is set by hand. 'open'/'few_spaces'/'full' are normally
+  // recomputed from seats booked (see recalcDepartureStatus in bookings.js);
+  // 'cancelled' and 'request_only' are genuinely editorial decisions, and this
+  // is what the admin Departures tab's Cancel / Reopen buttons call.
   router.patch('/api/departures/:id/availability', requireAdmin((req, res) => {
+    const row = get('SELECT * FROM departures WHERE id = ?', [Number(req.params.id)]);
+    // Previously missing: an UPDATE against an id that doesn't exist affects
+    // zero rows but still answered {updated:true}, so a stale admin tab could
+    // report success for a departure someone else had already deleted.
+    if (!row) return notFound(res, 'Departure not found');
     const { status } = req.body || {};
     const allowed = ['open', 'few_spaces', 'full', 'request_only', 'cancelled'];
     if (!allowed.includes(status)) return badRequest(res, 'status must be one of ' + allowed.join(', '));
-    run('UPDATE departures SET status = ? WHERE id = ?', [status, Number(req.params.id)]);
-    ok(res, { updated: true });
+    // 'cancelled' and 'request_only' are real editorial choices, so they're
+    // stored as asked. The three capacity-driven states are NOT: they're
+    // derived from seats sold (capacityStatus, shared with the recalculation
+    // bookings do), so asking for 'open' on a date that's actually sold out
+    // lands on 'full' instead of briefly publishing a lie until the next
+    // booking happens to correct it.
+    const effective = (status === 'cancelled' || status === 'request_only')
+      ? status
+      : capacityStatus(row.capacity, row.seats_booked);
+    run('UPDATE departures SET status = ? WHERE id = ?', [effective, row.id]);
+    ok(res, {
+      updated: true,
+      requested_status: status,
+      status: effective,
+      departure: get('SELECT * FROM departures WHERE id = ?', [row.id]),
+    });
   }));
   // POST /api/admin/departures — add a new date for a tour. Only the start
   // (departure) date is ever supplied — the end date is always derived from
@@ -141,11 +177,24 @@ function register(router) {
     if (!b.tourId || !b.startDate || !b.capacity) {
       return badRequest(res, 'tourId, startDate and capacity are required');
     }
-    const tour = get('SELECT id, duration_days FROM tours WHERE id = ?', [Number(b.tourId)]);
+    // All three used to go straight into SQL / Date arithmetic unchecked:
+    // a malformed startDate threw RangeError inside computeEndDate (500),
+    // a guideId for a guide that doesn't exist hit a FOREIGN KEY violation
+    // (500), and a negative capacity was stored as-is, creating a departure
+    // that could never be booked and reported itself as having 0 spaces.
+    if (!isIsoDate(b.startDate)) return badRequest(res, 'startDate must be a real date in YYYY-MM-DD form');
+    const nums = validateNumbers({
+      tourId: [b.tourId, { min: 1 }],
+      capacity: [b.capacity, { min: 1, max: 200 }],
+      guideId: [b.guideId, { min: 1 }],
+    });
+    if (nums.error) return badRequest(res, nums.error);
+    const tour = get('SELECT id, duration_days FROM tours WHERE id = ?', [nums.values.tourId]);
     if (!tour) return notFound(res, 'Tour not found');
     const endDate = computeEndDate(b.startDate, tour.duration_days);
-    const guideId = b.guideId ? Number(b.guideId) : null;
+    const guideId = nums.values.guideId;
     if (guideId) {
+      if (!get('SELECT id FROM guides WHERE id = ?', [guideId])) return notFound(res, 'Guide not found');
       const conflict = findGuideConflict(guideId, b.startDate, endDate, 0);
       if (conflict) {
         const guide = get('SELECT name FROM guides WHERE id = ?', [guideId]);
@@ -153,11 +202,15 @@ function register(router) {
           `from ${conflict.start_date} to ${conflict.end_date} — pick a different guide or date`);
       }
     }
+    const allowedStatus = ['open', 'few_spaces', 'full', 'request_only', 'cancelled'];
+    if (b.status && !allowedStatus.includes(b.status)) {
+      return badRequest(res, 'status must be one of ' + allowedStatus.join(', '));
+    }
     const id = run(
       `INSERT INTO departures (tour_id, guide_id, start_date, end_date, capacity, seats_booked, status) VALUES (?,?,?,?,?,0,?)`,
-      [Number(b.tourId), guideId, b.startDate, endDate, Number(b.capacity), b.status || 'open']
+      [nums.values.tourId, guideId, b.startDate, endDate, nums.values.capacity, b.status || 'open']
     ).lastInsertRowid;
-    ok(res, get('SELECT * FROM departures WHERE id = ?', [id]));
+    created(res, get('SELECT * FROM departures WHERE id = ?', [id]));
   }));
 
   // PATCH /api/admin/departures/:id — edit the departure date, capacity,
@@ -176,12 +229,34 @@ function register(router) {
     if (!row) return notFound(res, 'Departure not found');
     const b = req.body || {};
 
+    // Same three guards as the create endpoint above — an edit could reach the
+    // identical 500s (RangeError on a bad date, FK violation on a missing
+    // guide) and could also drop capacity below the seats already sold.
+    if (b.startDate !== undefined && !isIsoDate(b.startDate)) {
+      return badRequest(res, 'startDate must be a real date in YYYY-MM-DD form');
+    }
+    const nums = validateNumbers({
+      capacity: [b.capacity, { min: 1, max: 200 }],
+      guideId: [b.guideId, { min: 1 }],
+    });
+    if (nums.error) return badRequest(res, nums.error);
+    if (nums.values.capacity !== null && nums.values.capacity < row.seats_booked) {
+      return badRequest(res, `${row.seats_booked} seat(s) are already booked on this departure — capacity can't go below that.`);
+    }
+    if (b.status !== undefined && b.status !== null
+        && !['open', 'few_spaces', 'full', 'request_only', 'cancelled'].includes(b.status)) {
+      return badRequest(res, 'status must be one of open, few_spaces, full, request_only, cancelled');
+    }
+
     const startDate = b.startDate || row.start_date;
     const endDate = b.startDate ? computeEndDate(b.startDate, actualDurationDays(row.start_date, row.end_date)) : row.end_date;
     // guideId is nullable (unassign), so its presence — not its truthiness —
     // decides whether this request touches it at all.
     const touchesGuideId = Object.prototype.hasOwnProperty.call(b, 'guideId');
-    const guideId = touchesGuideId ? (b.guideId || null) : row.guide_id;
+    const guideId = touchesGuideId ? nums.values.guideId : row.guide_id;
+    if (touchesGuideId && guideId && !get('SELECT id FROM guides WHERE id = ?', [guideId])) {
+      return notFound(res, 'Guide not found');
+    }
 
     // Only re-check for a scheduling conflict when this request actually
     // moves the date or reassigns the guide. Otherwise an unrelated edit
@@ -199,7 +274,7 @@ function register(router) {
     }
 
     run(`UPDATE departures SET start_date=?, end_date=?, capacity=COALESCE(?,capacity), guide_id=?, status=COALESCE(?,status) WHERE id=?`,
-      [startDate, endDate, b.capacity ?? null, guideId, b.status || null, row.id]);
+      [startDate, endDate, nums.values.capacity, guideId, b.status || null, row.id]);
     ok(res, get('SELECT * FROM departures WHERE id = ?', [row.id]));
   }));
 

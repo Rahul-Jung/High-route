@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Private Trips and Custom Adventures | High Route</title>
+<meta name="description" content="Tell us the activity, the region, the dates, how long and how hard — and we build the trip around your group instead of making you fit a departure.">
+<meta property="og:title" content="Private Trips and Custom Adventures | High Route">
+<meta property="og:description" content="Tell us the activity, the region, the dates, how long and how hard — and we build the trip around your group instead of making you fit a departure.">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div data-site-header></div>
+
+<main id="main">
+<header class="page-head">
+  <div class="wrap">
+    <p class="crumbs"><a href="index.html">Home</a><span>/</span><a href="finder.html">Plan Your Trip</a><span>/</span>Private Trips</p>
+    <p class="page-eyebrow">Built around your group</p>
+    <h1>Private Trips</h1>
+    <p class="page-lede">Every itinerary on this site can be run privately, on dates you choose — and anything
+      that is not on the site can usually be built, because the guides, the permits and the logistics are the
+      same ones we already run.</p>
+  </div>
+</header>
+
+<section class="section">
+  <div class="wrap">
+    <div class="two-col" style="align-items:start">
+      <div>
+        <div class="section-head">
+          <p class="section-kicker">Tell us what you want</p>
+          <h2>Start the conversation</h2>
+        </div>
+        <p class="adv-summary" style="max-width:60ch;margin-bottom:22px">Answer what you know. "Two weeks in October,
+          four of us, fairly fit, no idea where" is enough to work with — the detail is what the reply is for.</p>
+
+        <div id="private-gate"></div>
+
+        <form id="private-form" class="finder-card" novalidate>
+          <div class="form-grid form-grid-2">
+            <div class="field">
+              <label for="pt-activity">What do you want to do?</label>
+              <select id="pt-activity"><option value="">Loading…</option></select>
+            </div>
+            <div class="field">
+              <label for="pt-destination">Where?</label>
+              <select id="pt-destination"><option value="">Loading…</option></select>
+            </div>
+          </div>
+
+          <div class="form-grid form-grid-2" style="margin-top:16px">
+            <div class="field">
+              <label for="pt-from">Travelling between</label>
+              <input type="date" id="pt-from">
+              <span class="field-error" data-error-for="pt-from"></span>
+            </div>
+            <div class="field">
+              <label for="pt-to">and</label>
+              <input type="date" id="pt-to">
+              <span class="field-error" data-error-for="pt-to"></span>
+            </div>
+          </div>
+
+          <div class="form-grid form-grid-2" style="margin-top:16px">
+            <div class="field">
+              <label for="pt-duration">How long?</label>
+              <select id="pt-duration"><option value="">Loading…</option></select>
+            </div>
+            <div class="field">
+              <label for="pt-group">How many of you? <span class="required-mark" aria-hidden="true">*</span></label>
+              <input type="number" id="pt-group" min="1" max="100" value="2" required
+                     aria-describedby="pt-group-err">
+              <span class="field-error" data-error-for="pt-group" id="pt-group-err"></span>
+            </div>
+          </div>
+
+          <div class="form-grid form-grid-2" style="margin-top:16px">
+            <div class="field">
+              <label for="pt-difficulty">How challenging?</label>
+              <select id="pt-difficulty">
+                <option value="">Not sure — advise me</option>
+                <option value="relaxed">Relaxed — low demand, accessible</option>
+                <option value="active">Active — some sustained activity</option>
+                <option value="moderate">Moderate — real effort, full days</option>
+                <option value="challenging">Challenging — strong fitness or skill</option>
+                <option value="tough">Tough — high passes, remote, committing</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="pt-accommodation">Accommodation preference</label>
+              <select id="pt-accommodation"><option value="">Loading…</option></select>
+            </div>
+          </div>
+
+          <div class="form-grid form-grid-2" style="margin-top:16px">
+            <div class="field">
+              <label for="pt-experience">Relevant experience</label>
+              <select id="pt-experience">
+                <option value="">Prefer not to say</option>
+                <option value="none">New to this</option>
+                <option value="some">Some — a few trips</option>
+                <option value="experienced">Experienced</option>
+                <option value="very-experienced">Very experienced, including at altitude</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="pt-budget">Rough budget per person</label>
+              <select id="pt-budget">
+                <option value="">Rather not say yet</option>
+                <option value="under-1000">Under €1,000</option>
+                <option value="1000-2000">€1,000–€2,000</option>
+                <option value="2000-3500">€2,000–€3,500</option>
+                <option value="over-3500">Over €3,500</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field" style="margin-top:16px">
+            <label for="pt-requirements">Anything we should know?</label>
+            <p class="hint">Dietary requirements, medical conditions, accessibility needs, a fixed date you cannot
+              move, someone in the group who is much fitter or much less fit than the rest. The more awkward the
+              constraint, the more useful it is to know now.</p>
+            <textarea id="pt-requirements" maxlength="2000"></textarea>
+          </div>
+
+          <div class="form-grid form-grid-2" style="margin-top:16px">
+            <div class="field">
+              <label for="pt-phone">Phone (optional)</label>
+              <input type="tel" id="pt-phone" autocomplete="tel">
+            </div>
+            <div class="field">
+              <label for="pt-contact">How should we reply?</label>
+              <select id="pt-contact">
+                <option value="email">Email</option>
+                <option value="phone">Phone</option>
+                <option value="either">Either</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="finder-actions" style="margin-top:22px">
+            <button type="submit" class="btn btn-solid">Send my enquiry</button>
+            <span class="result-count">Your name and email come from your account, not this form.</span>
+          </div>
+          <p class="form-status" id="private-status" role="status" aria-live="polite" style="margin-top:14px"></p>
+        </form>
+      </div>
+
+      <div>
+        <div class="card">
+          <h3>What happens next</h3>
+          <ol class="prose" style="padding-left:20px;margin:0">
+            <li>A guide reads it — not a sales desk — and replies within two working days.</li>
+            <li>If what you want is sensible, you get an itinerary and a price. If it is not, you get told why and
+              what the nearest workable version is. A fortnight in Manaslu in January is not a trip we will sell you.</li>
+            <li>Nothing is charged, and nothing is booked, until you have seen the itinerary and the price and said yes.</li>
+          </ol>
+        </div>
+
+        <div class="card" style="margin-top:18px">
+          <h3>Private versions of what is already here</h3>
+          <p class="adv-summary">Any scheduled trip can be run for your group alone, which mainly changes three
+            things: the dates are yours, the pace is yours, and the group is only you. It usually costs more per
+            person than joining a departure, because the fixed costs are shared between fewer people.</p>
+          <p style="margin:0"><a class="adv-link" href="adventures.html">Browse the scheduled trips →</a></p>
+        </div>
+
+        <div class="card" style="margin-top:18px">
+          <h3>Already have an account?</h3>
+          <p class="adv-summary">Enquiries and the quotes that come back live on your dashboard, so you are not
+            chasing an email thread.</p>
+          <p style="margin:0"><a class="adv-link" href="dashboard.html">Open my dashboard →</a></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<noscript>
+  <div class="wrap"><div class="note note-action"><div><p><strong>This form needs JavaScript</strong> because it
+    validates as you go and attaches the enquiry to your account. With scripting off, email is the way to reach us
+    — see the <a href="contact.html">contact page</a>.</p></div></div></div>
+</noscript>
+</main>
+
+<div data-site-footer></div>
+
+<script src="shell.js"></script>
+<script src="config.js"></script>
+<script src="main.js"></script>
+<script src="adventures.js"></script>
+</body>
+</html>

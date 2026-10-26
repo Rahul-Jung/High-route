@@ -191,6 +191,39 @@ if (!riderCols.includes('email_verified_at')) {
   db.exec(`UPDATE riders SET email_verified_at = created_at WHERE email_verified_at IS NULL`);
 }
 
+// Universal adventure model: the columns that turn a mountain-bike-only
+// `tours` table into the one table every adventure lives in, whatever the
+// activity, plus the destination/guide columns the new pages need. Kept in
+// its own file because the migration is long and self-contained, and
+// because the next activity added should mean editing lib/adventures.js,
+// not this. Additive and idempotent — safe on every boot.
+require('./migrations/001-universal-adventure')(db);
+
+// Reference data the new pages read: activity types, destination page copy,
+// FAQs, and the labelled-but-empty impact metrics. Separate from seed.js
+// because seed.js only runs when the database is empty, and this has to
+// reach databases that already have tours in them.
+require('./migrations/002-reference-data')(db);
+
+// The Private Trips enquiry fields — activity, difficulty and
+// accommodation preference, a date window, special requirements and a
+// phone number. The custom-request table was shaped around the
+// mountain-bike wizard and had nowhere to put any of them.
+require('./migrations/003-custom-request-fields')(db);
+
+// The destination pages. The seven written-up regions had an intro, a season
+// paragraph and four practical notes, which is a stub rather than a page.
+// This adds the structured blocks the page renders — a glance bar,
+// highlights, a season table, permit/health/culture panels and free-form
+// sections — and seeds them with geography and logistics. It writes a field
+// only when that field is still empty, so an admin's edit in the panel
+// survives every subsequent boot.
+require('./migrations/004-destination-pages')(db);
+
+// Itinerary days gain description, accommodation, meals and notes (brief
+// 8.5). Optional, nullable, nothing seeded — they describe real trips.
+require('./migrations/005-itinerary-day-details')(db);
+
 // One-time content fix: the original seed used random picsum.photos
 // placeholders (no thematic control — a tour card could end up showing a
 // water droplet macro shot or star trails instead of a trail/mountain-biking

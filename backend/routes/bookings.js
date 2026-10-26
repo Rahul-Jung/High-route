@@ -1,9 +1,11 @@
 'use strict';
 const { all, get, run, transaction } = require('../db');
-const { ok, created, badRequest, notFound, unauthorized, newToken, verifyPassword } = require('../lib/util');
+const { ok, created, badRequest, notFound, unauthorized, forbidden, newToken, verifyPassword, validateCard } = require('../lib/util');
 const { requireAdmin, requireAuth, sessionFromRequest } = require('../lib/auth');
 const { evaluatePromoCode } = require('./promo');
 const { logRequestEvent } = require('../lib/requestAudit');
+const { notifyAdmins } = require('../lib/notifications');
+const { paymentConfig, refuseIfPaymentsDisabled } = require('../lib/payments');
 
 // A held-but-unpaid booking has this long to get its deposit recorded before
 // it auto-cancels and the seats go back into the pool. Demo-scale value —
@@ -24,9 +26,17 @@ function bookingReference(id) {
 function recalcDepartureStatus(departureId) {
   const dep = get('SELECT * FROM departures WHERE id = ?', [departureId]);
   if (!dep || dep.status === 'cancelled' || dep.status === 'request_only') return;
-  const remaining = dep.capacity - dep.seats_booked;
-  const status = remaining <= 0 ? 'full' : remaining <= 3 ? 'few_spaces' : 'open';
+  const status = capacityStatus(dep.capacity, dep.seats_booked);
   if (status !== dep.status) run('UPDATE departures SET status = ? WHERE id = ?', [status, departureId]);
+}
+
+/** The single definition of which capacity-driven status a departure should
+ *  have. Exported so routes/departures.js can reuse it when an admin reopens a
+ *  cancelled date — otherwise that code would have to repeat these thresholds
+ *  and could drift out of step with the ones bookings actually apply. */
+function capacityStatus(capacity, seatsBooked) {
+  const remaining = capacity - seatsBooked;
+  return remaining <= 0 ? 'full' : remaining <= 3 ? 'few_spaces' : 'open';
 }
 
 /** Releases a cancelled/expired booking's seats back to its departure. */
@@ -104,7 +114,26 @@ function computeRefundEntitlement(departureStartDate) {
   return { percent: rule ? rule.refund_percent : 0, days_before_departure: daysBeforeDeparture };
 }
 
+/** What cancelling this booking right now would entitle the rider to, used to
+ *  show the figure up-front in the dashboard's cancel confirmation rather than
+ *  only in the toast after the fact. Computed from exactly the same tiers and
+ *  the same amount-paid figure as the real cancel endpoint, so the preview and
+ *  the outcome can never disagree. */
+function refundPreview(bookingRow) {
+  if (bookingRow.status === 'cancelled') return { refund_preview_percent: 0, refund_preview_cents: 0 };
+  const entitlement = computeRefundEntitlement(bookingRow.start_date);
+  return {
+    refund_preview_percent: entitlement.percent,
+    refund_preview_cents: Math.round(bookingRow.amount_paid_cents * (entitlement.percent / 100)),
+  };
+}
+
 function register(router) {
+  // GET /api/payments/config — public. The frontend asks this before it
+  // renders a card form, so a form is only ever shown when something will
+  // actually happen to what is typed into it. See lib/payments.js.
+  router.get('/api/payments/config', (req, res) => ok(res, paymentConfig()));
+
   // POST /api/bookings — requires a signed-in rider (Authorization: Bearer <token>).
   // { departureId,
   //   riders: [{name, age, country, ridingExperience, bikeInfo, emergencyContactName, emergencyContactPhone, specialRequirements}],
@@ -209,6 +238,18 @@ function register(router) {
     });
     recalcDepartureStatus(departureId);
 
+    // Tell the admins a new place has been held (shows as a popup on their next sign-in / poll).
+    try {
+      const who = get('SELECT name FROM riders WHERE id = ?', [leadRiderId]);
+      const trip = get('SELECT t.name AS tour, d.start_date FROM departures d JOIN tours t ON t.id = d.tour_id WHERE d.id = ?', [departureId]);
+      notifyAdmins({
+        type: 'booking_new',
+        title: 'New booking: ' + (trip ? trip.tour : 'departure #' + departureId),
+        body: (who ? who.name : 'A rider') + ' held ' + riders.length + ' place' + (riders.length === 1 ? '' : 's') + (trip ? ' for ' + trip.start_date : '') + '.',
+        linkUrl: 'admin.html#bookings',
+      });
+    } catch (e) { /* a failed notification must never fail the booking */ }
+
     const booking = get('SELECT * FROM bookings WHERE id = ?', [bookingId]);
     const bookingRiders = all('SELECT * FROM booking_riders WHERE booking_id = ?', [bookingId]);
     created(res, {
@@ -244,6 +285,17 @@ function register(router) {
     return !!suppliedToken && suppliedToken === booking.access_token;
   }
 
+  /** Rejects a booking read with the right status and a message that matches
+   *  the reader's actual situation: a signed-in rider looking at someone
+   *  else's booking is a 403 they can't fix by signing in again, whereas an
+   *  anonymous visitor really does just need to sign in (or use the
+   *  access-token link from their confirmation). */
+  function denyBookingAccess(req, res, action) {
+    const session = sessionFromRequest(req);
+    if (session) return forbidden(res, `This booking belongs to a different account, so you can't ${action}.`);
+    return unauthorized(res, `Sign in, or open this booking's own link from your confirmation, to ${action}.`);
+  }
+
   /** Shared enrichment for a single booking response: parsed addons, its
    *  priced line items, any refund records, and the display reference. */
   function enrichBooking(booking) {
@@ -260,7 +312,7 @@ function register(router) {
   router.get('/api/bookings/:id', (req, res) => {
     const booking = get('SELECT * FROM bookings WHERE id = ?', [Number(req.params.id)]);
     if (!booking) return notFound(res, 'Booking not found');
-    if (!canAccessBooking(req, booking)) return unauthorized(res, 'Sign in, or supply this booking\'s access token, to view it');
+    if (!canAccessBooking(req, booking)) return denyBookingAccess(req, res, 'view it');
     const riders = all('SELECT * FROM booking_riders WHERE booking_id = ?', [booking.id]);
     // Joins in everything a "my trip" page needs in one call: which tour (+
     // its slug, to link to the full tour-detail page for the day-by-day
@@ -284,7 +336,7 @@ function register(router) {
   router.get('/api/bookings/:id/invoice', (req, res) => {
     const booking = get('SELECT * FROM bookings WHERE id = ?', [Number(req.params.id)]);
     if (!booking) return notFound(res, 'Booking not found');
-    if (!canAccessBooking(req, booking)) return unauthorized(res, 'Sign in, or supply this booking\'s access token, to view its invoice');
+    if (!canAccessBooking(req, booking)) return denyBookingAccess(req, res, 'view its invoice');
 
     let invoice = get('SELECT * FROM invoices WHERE booking_id = ?', [booking.id]);
     if (!invoice) {
@@ -353,9 +405,22 @@ function register(router) {
     const session = sessionFromRequest(req);
     const isAdmin = session && session.subject_type === 'admin';
     const isOwner = session && session.subject_type === 'rider' && booking.lead_rider_id === session.subject_id;
-    if (!isAdmin && !isOwner) return unauthorized(res, 'Sign in as the booking owner, or as an admin, to cancel it');
+    if (!isAdmin && !isOwner) {
+      return session
+        ? forbidden(res, 'This booking belongs to a different account, so you can\'t cancel it.')
+        : unauthorized(res, 'Sign in as the booking owner, or as an admin, to cancel it');
+    }
     if (booking.status === 'cancelled') return badRequest(res, 'This booking is already cancelled');
-    if (booking.status === 'completed') return badRequest(res, 'This booking is already completed and can\'t be cancelled');
+    // NOTE: there is deliberately no 'completed' guard here any more.
+    // bookings.status === 'completed' means "paid in full", NOT "the ride
+    // happened" (see schema.sql) — so refusing to cancel a completed booking
+    // locked every rider who paid in full out of cancelling at all, and out of
+    // the 90%-refund tier the cancellation policy page promises them. Admins
+    // couldn't override it either (there is no admin booking-status endpoint),
+    // which made the highest-value refund case the one the system could not
+    // handle. Whether the trip has actually run is decided below, from the
+    // departure's own dates — the only thing that genuinely rules out a
+    // self-service cancellation.
     const dep = get('SELECT * FROM departures WHERE id = ?', [booking.departure_id]);
     if (dep && new Date(dep.start_date) < new Date() && !isAdmin) {
       return badRequest(res, 'This departure has already happened, so it can\'t be self-cancelled — contact us directly');
@@ -423,9 +488,12 @@ function register(router) {
   // A production build would call Stripe (or similar) here and only update
   // state from its webhook, never trust the client's "it went through".
   router.post('/api/bookings/:id/pay', requireAuth('rider', (req, res) => {
+    // No payment provider is connected. Refuse before the body is read, so a
+    // card number sent anyway is never validated, used or logged.
+    if (refuseIfPaymentsDisabled(res)) return;
     const booking = get('SELECT * FROM bookings WHERE id = ?', [Number(req.params.id)]);
     if (!booking) return notFound(res, 'Booking not found');
-    if (booking.lead_rider_id !== req.session.subject_id) return unauthorized(res, 'You can only pay for your own booking');
+    if (booking.lead_rider_id !== req.session.subject_id) return forbidden(res, 'You can only pay for your own booking.');
     if (booking.status === 'cancelled') return badRequest(res, 'This booking is cancelled and can\'t be paid');
     if (booking.status === 'completed') return badRequest(res, 'This booking is already paid in full');
 
@@ -435,18 +503,18 @@ function register(router) {
     if (!(amount > 0)) return badRequest(res, 'amountCents must be a positive number');
     if (amount > balanceDue) return badRequest(res, 'That amount is more than the remaining balance of ' + balanceDue + ' cents');
 
-    const card = b.card || {};
-    const cardNumber = String(card.number || '').replace(/[\s-]+/g, '');
-    if (!/^\d{13,19}$/.test(cardNumber)) return badRequest(res, 'Enter a valid card number');
-    if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(String(card.expiry || '').trim())) return badRequest(res, 'Enter a valid expiry date (MM/YY)');
-    if (!/^\d{3,4}$/.test(String(card.cvv || '').trim())) return badRequest(res, 'Enter a valid CVV');
+    // Shared with the custom-proposal pay endpoint, and now also rejects a
+    // card whose expiry month has already passed — the old inline check only
+    // matched the MM/YY *shape*, so "01/20" was accepted as a live card.
+    const cardCheck = validateCard(b.card);
+    if (cardCheck.error) return badRequest(res, cardCheck.error);
 
     const paid = booking.amount_paid_cents + amount;
     let status = booking.status;
     if (paid >= booking.total_cents) status = 'completed';
     else if (paid >= booking.deposit_cents) status = 'deposit_paid';
     run('UPDATE bookings SET amount_paid_cents = ?, status = ? WHERE id = ?', [paid, status, booking.id]);
-    ok(res, { amount_paid_cents: paid, status, receipt: { last4: cardNumber.slice(-4), amount_cents: amount } });
+    ok(res, { amount_paid_cents: paid, status, receipt: { last4: cardCheck.last4, amount_cents: amount } });
   }));
 
   // GET /api/riders/me/bookings — the signed-in rider's own booking history.
@@ -465,7 +533,14 @@ function register(router) {
       return {
         ...enrichBooking(r),
         riders: all('SELECT * FROM booking_riders WHERE booking_id = ?', [r.id]),
-        can_cancel: r.status !== 'cancelled' && r.status !== 'completed' && new Date(r.start_date) > new Date(),
+        // 'completed' (= paid in full) is NOT a reason to hide Cancel — see the
+        // matching note in POST /api/bookings/:id/cancel. The only bar is the
+        // departure having already started.
+        can_cancel: r.status !== 'cancelled' && new Date(r.start_date) > new Date(),
+        // So the dashboard can tell the rider what cancelling would actually
+        // refund *before* they commit to it, instead of only revealing the
+        // number in the toast afterwards.
+        ...refundPreview(r),
         can_review: rideFinished && !alreadyReviewed,
         already_reviewed: alreadyReviewed,
       };
@@ -501,8 +576,11 @@ function register(router) {
 
     if (b.status === 'processed') {
       const admin = get('SELECT * FROM admins WHERE id = ?', [req.session.subject_id]);
-      if (!admin || !b.password || !verifyPassword(b.password, admin.password_hash, admin.password_salt)) {
-        return unauthorized(res, 'Your admin password is required to confirm a processed refund');
+      // Same split as the rider-deletion step-up in routes/admin.js: a missing
+      // confirmation is a 400 ("you still need to do this"), a wrong one a 401.
+      if (!b.password) return badRequest(res, 'Enter your own admin password to confirm you have actually sent this refund.');
+      if (!admin || !verifyPassword(b.password, admin.password_hash, admin.password_salt)) {
+        return unauthorized(res, 'That admin password is incorrect — this refund was not marked as processed.');
       }
     }
     transaction(() => {
@@ -557,4 +635,4 @@ function register(router) {
   }));
 }
 
-module.exports = { register, expireOverdueBookings, bookingReference, priceAddons, validateRider };
+module.exports = { register, expireOverdueBookings, bookingReference, priceAddons, validateRider, capacityStatus };

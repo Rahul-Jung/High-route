@@ -1,6 +1,6 @@
 'use strict';
 const { all, get, run } = require('../db');
-const { ok, created, badRequest, notFound } = require('../lib/util');
+const { ok, created, badRequest, notFound, numericField } = require('../lib/util');
 const { requireAuth } = require('../lib/auth');
 
 function register(router) {
@@ -12,7 +12,12 @@ function register(router) {
   // useful there), and a deleted tour's reviews are naturally excluded by the
   // INNER JOIN.
   router.get('/api/reviews', (req, res) => {
-    const limit = Math.min(Number(req.query.limit) || 12, 50);
+    // Was `Number(req.query.limit) || 12`, which silently swallowed any
+    // nonsense ("abc" → NaN → 12). Saying so is more useful than guessing,
+    // and it keeps every list endpoint behaving the same way.
+    const parsed = numericField(req.query.limit, 'limit', { min: 1, max: 50 });
+    if (parsed.error) return badRequest(res, parsed.error);
+    const limit = parsed.value === null ? 12 : parsed.value;
     const rows = all(
       `SELECT r.*, t.name AS tour_name, t.slug AS tour_slug, d.start_date AS departure_start_date
        FROM reviews r JOIN tours t ON t.id = r.tour_id LEFT JOIN departures d ON d.id = r.departure_id

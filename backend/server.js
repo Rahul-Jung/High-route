@@ -15,6 +15,15 @@ seed();
 
 const router = new Router();
 require('./routes/tours').register(router);
+// The universal adventure API: one listing and one detail endpoint for
+// every activity, plus the activity-type registry the nav and filters are
+// built from. /api/tours above is untouched and still serves the
+// mountain-bike catalogue the booking flow is built on.
+require('./routes/adventures').register(router);
+// Destination pages, FAQs, the impact report and the when-to-visit
+// calendar — structured content an admin maintains.
+require('./routes/content').register(router);
+require('./routes/waypoints').register(router);
 require('./routes/departures').register(router);
 require('./routes/addons').register(router);
 require('./routes/promo').register(router);
@@ -33,21 +42,49 @@ require('./routes/guides').register(router);
 require('./routes/destinations').register(router);
 require('./routes/gallery').register(router);
 require('./routes/newsletter').register(router);
+// The Contact page enquiry form — anonymous, stored, never auto-emailed.
+require('./routes/enquiries').register(router);
 require('./routes/admin').register(router);
 
 router.get('/api/health', (req, res) => sendJson(res, 200, { ok: true, time: new Date().toISOString() }));
 
+// These pages have no build step and no hashed filenames, so a browser has
+// nothing to tell it that admin.html or its inline JS changed. Without an
+// explicit header a browser applies heuristic caching (roughly a tenth of
+// the file's age), which means an admin can edit the panel, reload, and be
+// served yesterday's version — exactly the confusion that cost a round trip
+// after the route-map section was removed. The dashboards here are small and
+// always served from local disk, so there is nothing to gain by caching them.
+const NO_STORE = { 'Cache-Control': 'no-store, must-revalidate' };
+
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.svg': 'image/svg+xml' };
+
+// The route-map component is shared by the public tour pages and the admin
+// panel's pin editor. It lives in frontend/routemap.js and is mapped here so
+// admin.html (served from PUBLIC_DIR) loads that same file rather than a
+// second copy that would drift out of sync. An explicit single-file mapping,
+// not a second served directory — serveStatic's traversal guard below only
+// covers PUBLIC_DIR, and opening the frontend folder would widen it.
+const SHARED_FILES = {
+  '/routemap.js': path.join(__dirname, '..', 'frontend', 'routemap.js'),
+};
 
 function serveStatic(req, res) {
   let reqPath = decodeURIComponent(req.url.split('?')[0]);
   if (reqPath === '/') reqPath = '/index.html';
+  if (SHARED_FILES[reqPath]) {
+    return fs.readFile(SHARED_FILES[reqPath], (err, data) => {
+      if (err) return notFound(res, 'Not found');
+      res.writeHead(200, { 'Content-Type': 'text/javascript', 'X-Content-Type-Options': 'nosniff', ...NO_STORE });
+      res.end(data);
+    });
+  }
   const filePath = path.join(PUBLIC_DIR, reqPath);
   if (!filePath.startsWith(PUBLIC_DIR)) return notFound(res); // path traversal guard
   fs.readFile(filePath, (err, data) => {
     if (err) return notFound(res, 'Not found');
     const ext = path.extname(filePath);
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream', 'X-Content-Type-Options': 'nosniff' });
+    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream', 'X-Content-Type-Options': 'nosniff', ...NO_STORE });
     res.end(data);
   });
 }

@@ -1,6 +1,6 @@
 'use strict';
 const { run, get } = require('../db');
-const { newToken, hashToken, unauthorized } = require('./util');
+const { newToken, hashToken, unauthorized, forbidden } = require('./util');
 
 const SESSION_HOURS = 24 * 7;      // riders / guides
 const ADMIN_SESSION_HOURS = 12;    // shorter-lived — least-privilege for the CMS
@@ -37,26 +37,45 @@ function sessionFromRequest(req) {
   return getSession(tokenFromRequest(req));
 }
 
-/** Wrap a handler so it 401s unless a valid session of the given type is present.
- *  Attaches req.session = { subject_type, subject_id, token }. */
-function requireAuth(subjectType, handler) {
+/** Human-readable name for a role, used in the permission message below. */
+const ROLE_LABEL = { rider: 'a rider', guide: 'a guide', admin: 'an administrator' };
+
+/** Wrap a handler so it rejects unless a valid session of one of `subjectTypes`
+ *  is present. Pass null/[] to accept any signed-in role.
+ *  Attaches req.session = { subject_type, subject_id, token }.
+ *
+ *  401 vs 403 matters here, and used to be conflated: "no session at all" is a
+ *  401 (sign in and retry), but "signed in as the wrong role" is a 403 — it is
+ *  not fixable by signing in again, and telling a signed-in person to "sign in"
+ *  sends them round a loop they can't escape. Dashboards that treat 401 as
+ *  "session died, sign out" (see admin.html's api()) would also have logged an
+ *  admin out over what was really a permissions mistake. */
+function requireRoles(subjectTypes, handler) {
+  const allowed = Array.isArray(subjectTypes) ? subjectTypes : (subjectTypes ? [subjectTypes] : []);
   return (req, res) => {
     const session = sessionFromRequest(req);
-    if (!session || (subjectType && session.subject_type !== subjectType)) {
-      return unauthorized(res, 'Sign in required');
+    if (!session) return unauthorized(res, 'Sign in required');
+    if (allowed.length && !allowed.includes(session.subject_type)) {
+      const need = allowed.map(r => ROLE_LABEL[r] || r).join(' or ');
+      return forbidden(res, `You're signed in, but this needs ${need} account.`);
     }
     req.session = session;
     return handler(req, res);
   };
 }
 
+/** Single-role form — the shape every existing call site already uses. */
+function requireAuth(subjectType, handler) {
+  return requireRoles(subjectType, handler);
+}
+
 /** Admin routes: a real, short-lived admin session (see routes/auth.js
  *  POST /api/admin/login) — replaces the old single shared bearer token. */
 function requireAdmin(handler) {
-  return requireAuth('admin', handler);
+  return requireRoles('admin', handler);
 }
 
 module.exports = {
   createSession, getSession, destroySession, sessionFromRequest, tokenFromRequest,
-  requireAuth, requireAdmin,
+  requireAuth, requireRoles, requireAdmin,
 };

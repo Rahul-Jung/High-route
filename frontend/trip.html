@@ -9,68 +9,20 @@
 </head>
 <body>
 
-<header class="site-header">
-  <a href="index.html" class="logo"><span class="mark">◆</span> HIGH ROUTE</a>
-  <nav>
-    <ul class="main-nav">
-      <li><a href="#">Explore</a>
-        <div class="nav-panel"><div class="nav-panel-inner">
-          <a href="tours.html">Tours</a>
-          <a href="index.html#map">Destinations</a>
-          <a href="tour-detail.html#route">Routes</a>
-          <a href="index.html#styles">Experiences</a>
-          <a href="tour-detail.html#levels">Difficulty levels</a>
-          <a href="index.html#departures">Seasons</a>
-        </div></div>
-      </li>
-      <li><a href="#">Plan</a>
-        <div class="nav-panel"><div class="nav-panel-inner">
-          <a href="calendar.html">Tour calendar</a>
-          <a href="build-adventure.html">Custom tour</a>
-          <a href="build-adventure.html">Build your trip</a>
-          <a href="#">Group tours</a>
-          <a href="#">Bike rental</a>
-          <a href="#">Accommodation</a>
-          <a href="#">Transport</a>
-          <a href="#">Travel information</a>
-        </div></div>
-      </li>
-      <li><a href="#">Ride</a>
-        <div class="nav-panel"><div class="nav-panel-inner">
-          <a href="index.html#journal">MTB stories</a>
-          <a href="index.html#journal">Rider journal</a>
-          <a href="index.html#gallery">Videos</a>
-          <a href="index.html#gallery">Photo gallery</a>
-          <a href="tour-detail.html#route">Route guides</a>
-          <a href="index.html#reviews">Rider community</a>
-        </div></div>
-      </li>
-      <li><a href="#">About</a>
-        <div class="nav-panel"><div class="nav-panel-inner">
-          <a href="index.html#why">Our story</a>
-          <a href="index.html#guides">Our guides</a>
-          <a href="index.html#why">Safety</a>
-          <a href="index.html#sustain">Sustainability</a>
-          <a href="index.html#why">Why Nepal</a>
-          <a href="index.html#reviews">Reviews</a>
-        </div></div>
-      </li>
-    </ul>
-  </nav>
-  <div class="header-actions">
-    <a href="tours.html" class="nav-cta">Browse tours</a>
-    <button class="nav-toggle" aria-label="Menu">☰</button>
-  </div>
-</header>
+<div data-site-header></div>
+
+<!-- The main landmark. Without one, shell.js used to promote the first block
+     here and overwrite its id, which is what broke the dashboard. -->
+<main id="main">
 
 <div id="trip-gate" class="dash-gate hidden">
-  <h1>Sign in to view this trip</h1>
+  <h2>Sign in to view this trip</h2>
   <p style="color:var(--paper-dim); margin:14px 0 24px; font-size:15px;">Your booking's departure date, guide and trip details live here once you're signed in.</p>
   <button class="btn btn-solid" id="trip-signin-btn">Sign in</button>
 </div>
 
 <div id="trip-notfound" class="dash-gate hidden">
-  <h1>Trip not found</h1>
+  <h2>Trip not found</h2>
   <p style="color:var(--paper-dim); margin:14px 0 24px; font-size:15px;" id="trip-notfound-msg">This booking doesn't exist, or isn't linked to your account.</p>
   <a href="dashboard.html" class="btn btn-solid">Back to your account</a>
 </div>
@@ -130,7 +82,7 @@
 
           <div id="route-section">
             <h2 id="route" style="margin-top:64px;">Route, day by day</h2>
-            <p style="margin-bottom:8px;">Select a day to see the elevation profile, terrain and overnight stop. Hover the chart for altitude at any point.</p>
+            <p id="route-day-intro" style="margin-bottom:8px;">Select a day to see the elevation profile, terrain and overnight stop. Hover the chart for altitude at any point.</p>
             <p id="data-source-note" style="font-family:var(--f-mono); font-size:11px; color:var(--glacier); margin-bottom:28px;">Loading live route data…</p>
 
             <div class="day-tabs" id="day-tabs"></div>
@@ -152,12 +104,6 @@
                 <canvas id="elev-chart"></canvas>
                 <div id="elev-tooltip" class="elev-tooltip"></div>
               </div>
-            </div>
-
-            <div id="route-map-wrap" style="margin-top:28px;">
-              <h3 style="font-size:18px; color:var(--paper); text-transform:uppercase; margin-bottom:10px;">Route map</h3>
-              <p id="route-map-note" style="font-family:var(--f-mono); font-size:12px; color:var(--paper-dim); margin-bottom:14px;"></p>
-              <svg id="route-map" class="route-map hidden" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid meet"></svg>
             </div>
           </div>
           <div id="route-empty" class="hidden" style="margin-top:64px;">
@@ -187,11 +133,11 @@
 
           <h2 style="margin-top:64px;">Safety information</h2>
           <div id="tour-safety"><p style="color:var(--paper-dim); font-size:14px;">Loading…</p></div>
-          <p style="font-size:13px;"><a href="safety-policy.html">Read our full safety policy &rarr;</a></p>
+          <p style="font-size:13px;"><a href="safety.html">How we approach safety &rarr;</a></p>
 
           <h2 style="margin-top:64px;">Cancellation policy</h2>
           <div id="tour-cancellation"><p style="color:var(--paper-dim); font-size:14px;">Loading…</p></div>
-          <p style="font-size:13px;"><a href="cancellation-policy.html">Read our full cancellation policy &rarr;</a></p>
+          <p style="font-size:13px;"><a href="booking-conditions.html#cancel-you">Read the cancellation terms &rarr;</a></p>
 
           <h2 style="margin-top:64px;">Rider reviews</h2>
           <div id="tour-reviews" style="margin-top:20px;"><p style="color:var(--paper-dim); font-size:14px;">Loading reviews…</p></div>
@@ -209,15 +155,11 @@
   </section>
 </div>
 
-<footer>
-  <div class="wrap">
-    <div class="footer-bottom">
-      <span>© 2026 High Route MTB, Kathmandu</span>
-      <span><a href="index.html">Back to the homepage</a></span>
-    </div>
-  </div>
-</footer>
+</main>
 
+<div data-site-footer></div>
+
+<script src="shell.js"></script>
 <script src="config.js"></script>
 <script src="main.js"></script>
 </body>

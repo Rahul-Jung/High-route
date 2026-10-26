@@ -257,6 +257,7 @@ function register(router) {
     const tour = get('SELECT * FROM tours WHERE slug = ?', [req.params.slug]);
     if (!tour) return notFound(res, 'Tour not found');
     const days = all('SELECT * FROM tour_days WHERE tour_id = ? ORDER BY day_number ASC', [tour.id]);
+
     // is_custom = 0 everywhere below: a private custom-trip departure never
     // appears on the public tour page — see schema.sql's comment on it.
     const departures = all(
@@ -282,6 +283,12 @@ function register(router) {
       equipment_essential: parseJsonArray(equipment_essential_json),
       equipment_recommended: parseJsonArray(equipment_recommended_json),
       days, departures, reviews, gallery, guides,
+      // Route-map pins are deliberately NOT included here any more. The
+      // tour page no longer draws a map, and a snapped leg's geometry runs
+      // to a few KB each — that was several tens of KB on every tour page
+      // view for data nothing rendered. The pins and their snapped routes
+      // are still stored, and still served by GET /api/tours/:slug/waypoints
+      // for the admin panel, so the map can be put back without a migration.
     });
   });
 }

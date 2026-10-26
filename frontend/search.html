@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Search | High Route</title>
+<meta name="description" content="Search High Route adventures by name, region, activity or keyword.">
+<meta property="og:title" content="Search | High Route">
+<meta property="og:description" content="Search High Route adventures by name, region, activity or keyword.">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div data-site-header></div>
+
+<main id="main">
+<header class="page-head">
+  <div class="wrap">
+    <p class="crumbs"><a href="index.html">Home</a><span>/</span>Search</p>
+    <h1>Search</h1>
+    <p class="page-lede">Searches adventure names, summaries, descriptions and regions.</p>
+    <form id="search-form" class="save-form" style="margin-top:24px;max-width:540px">
+      <label class="sr-only" for="search-q">Search adventures</label>
+      <input type="search" id="search-q" placeholder="Mustang, enduro, teahouse, 10 days…" autofocus>
+      <button type="submit" class="btn btn-solid">Search</button>
+    </form>
+  </div>
+</header>
+
+<section class="section" id="search-page">
+  <div class="wrap">
+    <p class="result-count" id="search-count" role="status" aria-live="polite" style="margin-bottom:20px"></p>
+    <div id="search-results"></div>
+    <div class="two-col" style="margin-top:44px">
+      <div class="prose">
+        <h2>Looking for something specific?</h2>
+        <p>The <a href="adventures.html">adventures listing</a> filters by activity, difficulty, duration,
+          destination, trip format, accommodation, month and price, and the filters are reflected in the URL so a
+          filtered search is shareable.</p>
+      </div>
+      <div class="prose">
+        <h2>Not sure what you are looking for?</h2>
+        <p>The <a href="finder.html">Adventure Finder</a> asks four questions instead and tells you honestly when
+          nothing matches rather than showing you the nearest thing and hoping.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+  <noscript>
+    <div class="wrap"><div class="note note-action"><div><p><strong>Search results is loaded from the live database, which needs JavaScript.</strong>
+      With it switched off this page cannot show you real departures or prices, and showing you stale ones copied into the
+      HTML would be worse. <a href="adventures.html">adventures.html</a> has the same information once scripting is on.</p></div></div></div>
+  </noscript>
+</main>
+
+<div data-site-footer></div>
+
+<script src="shell.js"></script>
+<script src="config.js"></script>
+<script src="main.js"></script>
+<script src="adventures.js"></script>
+</body>
+</html>

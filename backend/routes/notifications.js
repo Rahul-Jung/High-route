@@ -1,6 +1,6 @@
 'use strict';
 const { all, get, run } = require('../db');
-const { ok, notFound, unauthorized } = require('../lib/util');
+const { ok, notFound, unauthorized, forbidden } = require('../lib/util');
 const { requireAdmin, requireAuth } = require('../lib/auth');
 
 function register(router) {
@@ -17,7 +17,7 @@ function register(router) {
     const row = get('SELECT * FROM notifications WHERE id = ?', [Number(req.params.id)]);
     if (!row) return notFound(res, 'Notification not found');
     if (row.recipient_type !== 'rider' || row.recipient_id !== req.session.subject_id) {
-      return unauthorized(res, 'This notification does not belong to you');
+      return forbidden(res, 'This notification belongs to a different account.');
     }
     run("UPDATE notifications SET read_at = datetime('now') WHERE id = ? AND read_at IS NULL", [row.id]);
     ok(res, { read: true });

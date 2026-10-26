@@ -38,11 +38,11 @@
 </head>
 <body>
 
-<header class="site-header">
-  <a href="index.html" class="logo"><span class="mark">◆</span> HIGH ROUTE</a>
-  <nav><ul class="main-nav"><li><a href="dashboard.html">My account</a></li></ul></nav>
-  <div class="header-actions"><button class="nav-toggle" aria-label="Menu">☰</button></div>
-</header>
+<div data-site-header></div>
+
+<!-- The main landmark. Without one, shell.js used to promote the first block
+     here and overwrite its id, which is what broke the dashboard. -->
+<main id="main">
 
 <section class="page-hero" style="padding-bottom:24px;">
   <div class="topo-bg"></div>
@@ -64,15 +64,11 @@
   </div>
 </section>
 
-<footer>
-  <div class="wrap">
-    <div class="footer-bottom">
-      <span>© 2026 High Route MTB, Kathmandu</span>
-      <span><a href="index.html">Back to the homepage</a></span>
-    </div>
-  </div>
-</footer>
+</main>
 
+<div data-site-footer></div>
+
+<script src="shell.js"></script>
 <script src="config.js"></script>
 <script src="main.js"></script>
 </body>

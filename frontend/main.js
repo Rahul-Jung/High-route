@@ -45,7 +45,13 @@
     if(!subLinks.length){
       return `<a class="mn-link" href="${topLink.getAttribute('href')}">${escapeHtml(topLink.textContent.trim())}</a>`;
     }
-    const subHtml = subLinks.map(a => `<a href="${a.getAttribute('href')}">${escapeHtml(a.textContent.trim())}</a>`).join('');
+    const subHtml = subLinks.map(a => {
+      const labelEl = a.querySelector('.np-label');
+      const descEl = a.querySelector('.np-desc');
+      const label = (labelEl || a).textContent.trim();
+      const desc = descEl ? descEl.textContent.trim() : '';
+      return `<a href="${a.getAttribute('href')}">${escapeHtml(label)}${desc ? `<span class="mn-desc">${escapeHtml(desc)}</span>` : ''}</a>`;
+    }).join('');
     return `<details><summary>${escapeHtml(topLink.textContent.trim())}</summary><div class="mn-sub">${subHtml}</div></details>`;
   }).join('');
 
@@ -164,6 +170,31 @@ async function apiPost(path, body){
   if(!r.ok) { const err = new Error(data.error || r.statusText); err.data = data; throw err; }
   return data;
 }
+/* Whether a card form should be shown at all. No payment provider is
+   connected (backend/lib/payments.js), so by default the answer is no and
+   every place that used to show card fields shows how to pay instead. Cached
+   for the page's lifetime; if the request fails we assume NO card form,
+   because showing card fields that then refuse is worse than not showing
+   them. */
+let _paymentConfigPromise = null;
+function getPaymentConfig(){
+  if(!_paymentConfigPromise){
+    _paymentConfigPromise = apiGet('/api/payments/config').catch(() => ({
+      online: false, simulated: false, card_form: false,
+      how_to_pay: 'Online payment is not connected. Contact us and we will send payment details.',
+      contact_url: 'contact.html',
+    }));
+  }
+  return _paymentConfigPromise;
+}
+/** The panel shown in place of a card form while payments are not connected. */
+function paymentsOffPanel(cfg, contextLine){
+  return `<div class="note note-action" style="margin:6px 0 0;"><div>
+      <p><strong>Online payment isn't connected yet.</strong> ${escapeHtml(contextLine || '')}</p>
+      <p>${escapeHtml(cfg.how_to_pay || '')}</p>
+      <p style="margin-bottom:0;"><a href="${escapeHtml(cfg.contact_url || 'contact.html')}">Contact us to arrange payment &rarr;</a></p>
+    </div></div>`;
+}
 async function apiPatch(path, body){
   const headers = { 'Content-Type':'application/json', ...riderAuthHeaders() };
   const r = await fetch(API_BASE + path, { method:'PATCH', headers, body: JSON.stringify(body) });
@@ -276,24 +307,24 @@ const Auth = (function(){
         <form class="auth-form" id="auth-signin-form">
           <h2>Welcome back</h2>
           <p class="auth-sub">Sign in to book a tour or track your requests.</p>
-          <div class="auth-field"><label>Email</label><input type="email" id="auth-signin-email" autocomplete="username" required></div>
-          <div class="auth-field"><label>Password</label><input type="password" id="auth-signin-password" autocomplete="current-password" required></div>
+          <div class="auth-field"><label for="auth-signin-email">Email</label><input type="email" id="auth-signin-email" autocomplete="username" required></div>
+          <div class="auth-field"><label for="auth-signin-password">Password</label><input type="password" id="auth-signin-password" autocomplete="current-password" required></div>
           <div class="auth-error" id="auth-signin-error"></div>
           <button type="submit" class="btn btn-solid btn-block">Sign in</button>
         </form>
         <form class="auth-form hidden" id="auth-signup-form">
           <h2>Create your account</h2>
           <p class="auth-sub">One account to book, request custom trips, and track it all.</p>
-          <div class="auth-field"><label>Name</label><input type="text" id="auth-signup-name" required></div>
-          <div class="auth-field"><label>Email</label><input type="email" id="auth-signup-email" autocomplete="username" required></div>
-          <div class="auth-field"><label>Password</label><input type="password" id="auth-signup-password" autocomplete="new-password" minlength="8" required></div>
+          <div class="auth-field"><label for="auth-signup-name">Name</label><input type="text" id="auth-signup-name" required></div>
+          <div class="auth-field"><label for="auth-signup-email">Email</label><input type="email" id="auth-signup-email" autocomplete="username" required></div>
+          <div class="auth-field"><label for="auth-signup-password">Password</label><input type="password" id="auth-signup-password" autocomplete="new-password" minlength="8" required></div>
           <div class="auth-error" id="auth-signup-error"></div>
           <button type="submit" class="btn btn-solid btn-block">Create account</button>
         </form>
         <form class="auth-form hidden" id="auth-verify-form">
           <h2>Check your email</h2>
           <p class="auth-sub">We sent a 6-digit code to <b id="auth-verify-email"></b>. Enter it below to activate your account.</p>
-          <div class="auth-field"><label>Verification code</label><input type="text" id="auth-verify-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></div>
+          <div class="auth-field"><label for="auth-verify-code">Verification code</label><input type="text" id="auth-verify-code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required></div>
           <div class="auth-error" id="auth-verify-error"></div>
           <button type="submit" class="btn btn-solid btn-block">Verify &amp; sign in</button>
           <button type="button" class="btn btn-ghost btn-block" id="auth-verify-resend" style="margin-top:10px;">Resend code</button>
@@ -313,6 +344,24 @@ const Auth = (function(){
       overlay.querySelector('#auth-verify-form').dataset.email = email;
       overlay.querySelector('#auth-verify-error').textContent = '';
       overlay.querySelector('#auth-verify-code').value = '';
+    }
+
+    /** Drops back to the password sign-in step with the email already filled
+     *  in and an explanation of why. Used when the backend reports an account
+     *  is already verified (POST /api/auth/verify-email and
+     *  /api/auth/resend-verification both return { already_verified, email }),
+     *  which happens if someone verified in another tab or re-opens an old
+     *  verification email. Without this they'd sit on a code form that can
+     *  never succeed, holding a code the server has already thrown away. */
+    function showSignInStep(email, note){
+      overlay.querySelectorAll('.auth-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === 'signin'));
+      overlay.querySelector('#auth-verify-form').classList.add('hidden');
+      overlay.querySelector('#auth-signup-form').classList.add('hidden');
+      overlay.querySelector('#auth-signin-form').classList.remove('hidden');
+      if(email) overlay.querySelector('#auth-signin-email').value = email;
+      const errEl = overlay.querySelector('#auth-signin-error');
+      errEl.textContent = note || '';
+      overlay.querySelector('#auth-signin-password').focus();
     }
 
     overlay.addEventListener('click', e => { if(e.target === overlay) close(); });
@@ -389,7 +438,15 @@ const Auth = (function(){
         close();
         if(onSuccess){ const cb = onSuccess; onSuccess = null; cb(); }
         else location.reload(); // see the matching comment in the sign-in handler above
-      } catch(err) { errEl.textContent = err.message; }
+      } catch(err) {
+        // The account is already verified, so there's no code left to enter —
+        // hand them the sign-in form rather than an error on a dead form.
+        if(err.data && err.data.already_verified){
+          showSignInStep(err.data.email, 'Your email is already verified — just sign in with your password.');
+          return;
+        }
+        errEl.textContent = err.message;
+      }
     });
 
     overlay.querySelector('#auth-verify-resend').addEventListener('click', async () => {
@@ -402,7 +459,12 @@ const Auth = (function(){
         await apiPost('/api/auth/resend-verification', { email });
         errEl.style.color = '#4C9A55'; errEl.textContent = 'A new code has been sent.';
       } catch(err) {
-        errEl.style.color = ''; errEl.textContent = err.message;
+        errEl.style.color = '';
+        if(err.data && err.data.already_verified){
+          showSignInStep(err.data.email, 'Your email is already verified — just sign in with your password.');
+          return;
+        }
+        errEl.textContent = err.message;
       } finally {
         btn.disabled = false; btn.textContent = originalLabel;
       }
@@ -606,10 +668,9 @@ const DIFFICULTY_WORD = { 1:'Explorer', 2:'Trail rider', 3:'Mountain rider', 4:'
         day: d.day_number, title: d.title, dist: d.distance_km, gain: d.elevation_gain_m,
         loss: d.elevation_loss_m, high: d.high_point_m, hours: d.riding_hours,
         terrain: d.terrain, place: d.overnight_place,
-        // Only ever real admin-entered coordinates (see tour_days.overnight_lat/lng)
-        // — null for most tours/days, which renderRouteMap() must treat as
-        // "no data" rather than guessing a position.
-        lat: d.overnight_lat ?? null, lng: d.overnight_lng ?? null,
+        // Optional per-day detail (brief 8.5). Null when not recorded.
+        description: d.description || null, accommodation: d.accommodation || null,
+        meals: d.meals || null, notes: d.notes || null,
       };
       norm.profile = synthesizeProfile(norm);
       return norm;
@@ -696,11 +757,14 @@ const DIFFICULTY_WORD = { 1:'Explorer', 2:'Trail rider', 3:'Mountain rider', 4:'
   }
 
   function renderSharedTourSections(tour){
+    // A tour can have a drawn pin route before its day-by-day text is
+    // written (or the other way round), so the route section shows if
+    // EITHER exists — it used to need days, which would have hidden a
+    // perfectly good map behind an "itinerary coming soon" empty state.
     if(tour.days && tour.days.length){
       DAYS = normalizeFromApi(tour.days);
       if(dataSourceNote) dataSourceNote.textContent = 'Live from the database (' + API_BASE + ').';
       buildTabs();
-      renderRouteMap(DAYS);
     } else {
       routeSection.classList.add('hidden');
       routeEmpty.classList.remove('hidden');
@@ -844,7 +908,7 @@ const DIFFICULTY_WORD = { 1:'Explorer', 2:'Trail rider', 3:'Mountain rider', 4:'
       ${(booking.status === 'pending' || booking.status === 'deposit_paid') ? `<button class="btn btn-solid btn-block" style="margin-top:18px;" onclick="location.href='dashboard.html'">Pay from your dashboard</button>` : ''}
       <a href="invoice.html?booking=${booking.id}" class="btn btn-ghost btn-block" style="margin-top:12px;">View invoice</a>
       <a href="dashboard.html" class="btn btn-ghost btn-block" style="margin-top:10px;">Manage this booking</a>
-      <p style="font-size:12px; color:var(--paper-dim); margin-top:18px; line-height:1.6;"><a href="cancellation-policy.html">Cancellation policy</a>.</p>`;
+      <p style="font-size:12px; color:var(--paper-dim); margin-top:18px; line-height:1.6;"><a href="booking-conditions.html#cancel-you">Cancellation terms</a>.</p>`;
   }
   function renderTripSidebarDeparture(dep, tour){
     const el = document.getElementById('trip-sidebar-content');
@@ -856,15 +920,19 @@ const DIFFICULTY_WORD = { 1:'Explorer', 2:'Trail rider', 3:'Mountain rider', 4:'
       : dep.status === 'cancelled' ? 'This date has been cancelled' : left + (left === 1 ? ' spot left' : ' spots left');
     const btnLabel = canBookNow ? 'Book this departure' : dep.status === 'request_only' ? 'Request this date'
       : dep.status === 'full' ? 'Fully booked — ask about other dates' : 'Not bookable';
+    // Carries the tour, so the request arrives in the CRM "based on" it —
+    // the old Build Your Adventure wizard did this with a tourId; Private
+    // Trips takes ?tour=<slug>.
+    const privateTripHref = 'private-trips.html' + (dep.tour_slug ? '?tour=' + encodeURIComponent(dep.tour_slug) : '');
     el.innerHTML = `
       <div class="price">${priceLabel}</div>
       <div class="bc-row"><span>Availability</span><b style="color:${dep.status === 'full' ? '#D9534F' : '#7FBF6B'};">${escapeHtml(availLabel)}</b></div>
       <div class="bc-row"><span>Guide</span><b>${escapeHtml(dep.guide_name || 'To be confirmed')}</b></div>
       <button class="btn btn-solid btn-block" id="trip-book-btn" style="margin-top:20px;">${escapeHtml(btnLabel)}</button>
-      <a href="build-adventure.html" class="btn btn-ghost btn-block" style="margin-top:12px;">Ask for a private departure instead</a>`;
+      <a href="${privateTripHref}" class="btn btn-ghost btn-block" style="margin-top:12px;">Ask for a private departure instead</a>`;
     const btn = document.getElementById('trip-book-btn');
     if(dep.status === 'cancelled'){ btn.disabled = true; }
-    else if(dep.status === 'full' || dep.status === 'request_only'){ btn.addEventListener('click', () => { location.href = 'build-adventure.html'; }); }
+    else if(dep.status === 'full' || dep.status === 'request_only'){ btn.addEventListener('click', () => { location.href = privateTripHref; }); }
     else { btn.addEventListener('click', () => { window.location.href = 'checkout.html?departureId=' + dep.id; }); }
   }
 
@@ -875,7 +943,9 @@ const DIFFICULTY_WORD = { 1:'Explorer', 2:'Trail rider', 3:'Mountain rider', 4:'
     const dep = booking.departure;
     showTripApp();
     if(new URLSearchParams(location.search).get('booked') === '1'){
-      showToast('Booked! Deposit due: €' + (booking.deposit_cents/100).toLocaleString() + ' (demo only — no real payment was taken).', 'success');
+      // "Held", not "booked": the booking is pending until a deposit is
+      // recorded, and nothing has been charged.
+      showToast('Place held — deposit of €' + (booking.deposit_cents/100).toLocaleString() + ' due within 72 hours. Nothing has been charged.', 'success');
       history.replaceState(null, '', location.pathname + '?booking=' + bookingId);
     }
     document.title = dep.tour_name + ' — My Trip | High Route MTB Nepal';
@@ -994,7 +1064,6 @@ const DIFFICULTY_WORD = { 1:'Explorer', 2:'Trail rider', 3:'Mountain rider', 4:'
         DAYS = FALLBACK_ROUTE_DAYS;
         if(dataSourceNote) dataSourceNote.innerHTML = 'Backend not reachable at <code>' + escapeHtml(API_BASE) + '</code> — showing offline preview data. (' + escapeHtml(err.message) + ')';
         buildTabs();
-        renderRouteMap(DAYS);
         // The offline fallback has no gallery/guides/inclusions/equipment/
         // safety/cancellation data at all — render each section's real empty
         // state rather than leaving it stuck on "Loading…".
@@ -1086,7 +1155,28 @@ const DIFFICULTY_WORD = { 1:'Explorer', 2:'Trail rider', 3:'Mountain rider', 4:'
     if(!d) return;
     [...tabWrap.children].forEach((c,ci) => c.classList.toggle('active', ci===i));
     panel.title.textContent = 'DAY ' + d.day + ' — ' + d.title;
-    panel.desc.textContent = d.terrain + '. Overnight near ' + d.place + '.';
+    // The written description when the operator has given one; otherwise the
+    // sentence built from the terrain, which is what every day showed before.
+    panel.desc.textContent = d.description
+      ? d.description
+      : d.terrain + '. Overnight near ' + d.place + '.';
+    // Accommodation, meals and notes, shown only when recorded. Nothing is
+    // rendered for a field that is empty — an empty "Meals:" row would read
+    // as "no meals".
+    let extra = document.getElementById('day-extra');
+    if (!extra) {
+      extra = document.createElement('dl');
+      extra.id = 'day-extra';
+      extra.className = 'day-extra';
+      panel.desc.after(extra);
+    }
+    const rows = [];
+    if (d.description && d.terrain) rows.push(['Terrain', d.terrain]);
+    if (d.place) rows.push(['Overnight', d.place + (d.accommodation ? ' — ' + d.accommodation : '')]);
+    if (d.meals) rows.push(['Meals', d.meals]);
+    if (d.notes) rows.push(['Note', d.notes]);
+    extra.innerHTML = rows.map(([k, v]) => `<div><dt>${escapeHtml(k)}</dt><dd>${escapeHtml(v)}</dd></div>`).join('');
+    extra.hidden = !rows.length || (rows.length === 1 && !d.accommodation && !d.description);
     panel.dist.textContent = d.dist + ' km';
     panel.gain.textContent = '+' + d.gain.toLocaleString() + ' m';
     panel.loss.textContent = '−' + d.loss.toLocaleString() + ' m';
@@ -1170,12 +1260,18 @@ function renderBookingSidebar(tour){
     if(availEl){ availEl.textContent = label; availEl.style.color = color; }
     if(guideEl) guideEl.textContent = dep.guide_name || 'To be confirmed';
     if(bookBtn){
+      // bc-book-btn is a <button> rather than an anchor now, so where it
+      // goes is carried on a data attribute and read by the click handler
+      // below. It used to be `<a href="#">` whose href was rewritten here,
+      // which meant that before the departures loaded every tour page
+      // offered a keyboard user a link to nowhere.
+      bookBtn.disabled = false;
       if(dep.status === 'open' || dep.status === 'few_spaces'){
         bookBtn.textContent = 'Book this adventure';
-        bookBtn.href = '#';
+        bookBtn.dataset.go = '';
       } else {
         bookBtn.textContent = dep.status === 'full' ? 'Fully booked — ask about other dates' : 'Request this date';
-        bookBtn.href = 'build-adventure.html';
+        bookBtn.dataset.go = 'private-trips.html';
       }
     }
   }
@@ -1196,16 +1292,24 @@ function renderBookingSidebar(tour){
       selectEl.disabled = true;
       if(availEl){ availEl.textContent = 'Ask us about dates'; availEl.style.color = '#6FA0B8'; }
       if(guideEl) guideEl.textContent = '—';
-      if(bookBtn){ bookBtn.textContent = 'Ask for a private departure'; bookBtn.href = 'build-adventure.html'; }
+      if(bookBtn){
+        bookBtn.disabled = false;
+        bookBtn.textContent = 'Ask for a private departure';
+        bookBtn.dataset.go = 'private-trips.html';
+      }
     }
   }
 
   if(bookBtn){
-    bookBtn.onclick = (e) => {
+    bookBtn.onclick = () => {
       const dep = currentDep();
-      if(!dep) return; // no future departures — let the href navigate to build-adventure.html
-      e.preventDefault();
-      if(dep.status === 'full' || dep.status === 'request_only'){ window.location.href = 'build-adventure.html'; return; }
+      // No future departures: data-go carries the fallback destination that
+      // the href used to.
+      if(!dep){
+        if(bookBtn.dataset.go) window.location.href = bookBtn.dataset.go;
+        return;
+      }
+      if(dep.status === 'full' || dep.status === 'request_only'){ window.location.href = 'private-trips.html'; return; }
       // The real checkout flow (rider count, rider details, add-ons, promo
       // code, review) lives on its own page — this button just hands off
       // the chosen departure to it. Booking is tied to a rider account, so
@@ -1242,7 +1346,15 @@ function renderCustomProposalSidebar(reqData, proposal, booking){
     statusLine = escapeHtml(STATUS_LABEL[proposal.status] || proposal.status);
     cta = `<a href="dashboard.html" class="btn btn-solid btn-block" style="margin-top:20px;">Respond from your dashboard</a>`;
   }
-  const amountPaid = reqData.amount_paid_cents || 0;
+  // Once a booking exists it is the single source of truth for money — see the
+  // same rule in routes/proposals.js, which refuses further payment through the
+  // proposal from that point on. custom_requests.amount_paid_cents only ever
+  // records what was paid *through the proposal* (the deposit), so reading it
+  // here made this card contradict itself: the status line said "Trip confirmed
+  // — Fully paid" while the row directly beneath it said "Paid so far €500 of
+  // €2,000". The dashboard's own booking card had it right all along.
+  const amountPaid = booking ? booking.amount_paid_cents : (reqData.amount_paid_cents || 0);
+  const amountOf = booking ? booking.total_cents : proposal.price_cents;
   const dep = booking && booking.departure;
 
   aside.innerHTML = `
@@ -1251,10 +1363,10 @@ function renderCustomProposalSidebar(reqData, proposal, booking){
     <div class="bc-row"><span>Departure date</span><b>${proposal.start_date ? dateFmt(proposal.start_date) : 'To be confirmed'}</b></div>
     <div class="bc-row"><span>Duration</span><b>${proposal.duration_days ? proposal.duration_days + ' days' : '—'}</b></div>
     <div class="bc-row"><span>Deposit</span><b>${money(proposal.deposit_cents)} (${proposal.deposit_percent}%)</b></div>
-    ${amountPaid > 0 ? `<div class="bc-row"><span>Paid so far</span><b>${money(amountPaid)} of ${money(proposal.price_cents)}</b></div>` : ''}
+    ${amountPaid > 0 ? `<div class="bc-row"><span>Paid so far</span><b>${money(amountPaid)} of ${money(amountOf)}</b></div>` : ''}
     ${dep && dep.guide_name ? `<div class="bc-row"><span>Guide</span><b>${escapeHtml(dep.guide_name)}</b></div>` : ''}
     ${cta}
-    <p style="font-size:12px; color:var(--paper-dim); margin-top:18px; line-height:1.6;">Priced and scheduled exactly as agreed in your proposal — not this tour's standard listing. <a href="cancellation-policy.html">Cancellation policy</a>.</p>
+    <p style="font-size:12px; color:var(--paper-dim); margin-top:18px; line-height:1.6;">Priced and scheduled exactly as agreed in your proposal — not this tour's standard listing. <a href="booking-conditions.html#cancel-you">Cancellation terms</a>.</p>
   `;
 }
 
@@ -1265,79 +1377,6 @@ function renderCustomProposalSidebar(reqData, proposal, booking){
    include everywhere), and each renders an honest empty state — never
    placeholder copy — when the admin hasn't filled that content in yet.
    ============================================================ */
-
-/** Plots a tour's day-by-day route from whatever REAL overnight_lat/lng the
- *  admin has actually entered (see tour_days in schema.sql) — never
- *  fabricated or interpolated. Reuses the exact same fixed-bounding-box
- *  linear projection technique as the homepage Nepal map (see the
- *  DYNAMIC MAP PINS block below), just rescaled to this tour's own
- *  coordinate range instead of the whole country. Days without coordinates
- *  are skipped in the plotted line (never bridged across a gap) and called
- *  out by name in the note underneath, so missing data is visible rather
- *  than silently smoothed over. */
-function renderRouteMap(days){
-  const svg = document.getElementById('route-map');
-  const note = document.getElementById('route-map-note');
-  if(!svg) return;
-
-  const withCoords = days.filter(d => d.lat != null && d.lng != null);
-  const withoutCoords = days.filter(d => d.lat == null || d.lng == null);
-
-  if(!withCoords.length){
-    svg.classList.add('hidden');
-    svg.innerHTML = '';
-    if(note) note.textContent = 'No GPS coordinates have been recorded for this itinerary yet — a map isn\'t available for this tour.';
-    return;
-  }
-
-  const lats = withCoords.map(d => d.lat), lngs = withCoords.map(d => d.lng);
-  const padLat = Math.max((Math.max(...lats) - Math.min(...lats)) * 0.15, 0.03);
-  const padLng = Math.max((Math.max(...lngs) - Math.min(...lngs)) * 0.15, 0.03);
-  const latMin = Math.min(...lats) - padLat, latMax = Math.max(...lats) + padLat;
-  const lngMin = Math.min(...lngs) - padLng, lngMax = Math.max(...lngs) + padLng;
-  const W = 600, H = 400;
-  const project = (lat, lng) => ({
-    x: ((lng - lngMin) / (lngMax - lngMin)) * W,
-    y: H - ((lat - latMin) / (latMax - latMin)) * H, // north = up
-  });
-
-  // Consecutive days that both have coordinates are joined by a line;
-  // a day missing coordinates breaks the line into a new segment rather
-  // than being bridged over (that would imply a route position we don't
-  // actually have).
-  const segments = [];
-  let current = [];
-  days.forEach(d => {
-    if(d.lat != null && d.lng != null){ current.push(d); }
-    else if(current.length){ segments.push(current); current = []; }
-  });
-  if(current.length) segments.push(current);
-
-  const polylines = segments.filter(seg => seg.length > 1).map(seg =>
-    `<polyline class="route-map-line" points="${seg.map(d => { const p = project(d.lat, d.lng); return p.x.toFixed(1) + ',' + p.y.toFixed(1); }).join(' ')}"/>`
-  ).join('');
-
-  const firstDay = withCoords[0], lastDay = withCoords[withCoords.length - 1];
-  const pins = withCoords.map(d => {
-    const p = project(d.lat, d.lng);
-    const isStart = d === firstDay, isEnd = d === lastDay && lastDay !== firstDay;
-    const variant = isStart ? 'route-pin route-pin-start' : isEnd ? 'route-pin route-pin-end' : 'route-pin';
-    const label = isStart ? 'Start' : isEnd ? 'Finish' : 'Day ' + d.day;
-    return `<g class="${variant}">
-      <circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${isStart || isEnd ? 8 : 5}"/>
-      <text x="${p.x.toFixed(1)}" y="${(p.y - 13).toFixed(1)}" text-anchor="middle">${escapeHtml(label)}</text>
-    </g>`;
-  }).join('');
-
-  svg.innerHTML = polylines + pins;
-  svg.classList.remove('hidden');
-
-  const parts = ['Approximate overnight-stop positions for trip planning — not surveyed GPS data.'];
-  if(withoutCoords.length){
-    parts.push('No GPS position recorded for ' + withoutCoords.map(d => 'Day ' + d.day + ' (' + d.place + ')').join(', ') + ' — not plotted above.');
-  }
-  if(note) note.textContent = parts.join(' ');
-}
 
 /** Tour-specific photo gallery (category='tour', this tour's id) — same
  *  shape logic as the homepage gallery grid, wired to the shared lightbox. */
@@ -1357,15 +1396,19 @@ function renderTourGallery(tour){
       return;
     }
     if(status) status.classList.add('hidden');
+    // A <button>, not `<a href="#">`. These open a lightbox rather than
+    // navigating anywhere, so an anchor with a dead href was the wrong
+    // element: it offered a keyboard user a link that goes nowhere, told a
+    // screen reader "link" when the thing is a control, and left "#" in the
+    // address bar on every click. It also tripped the dead-link check that
+    // the brief's "no placeholder URLs" rule is enforced with.
     grid.innerHTML = data.images.map((im, i) => {
       const shapeClass = i === 0 ? 'g-tall' : i === 3 ? 'g-wide' : '';
-      return `<a href="#" class="${shapeClass}" data-index="${i}"><img src="${escapeHtml(im.image_url)}" alt="${escapeHtml(im.caption || tour.name + ' photo')}" loading="lazy"></a>`;
+      const caption = im.caption || tour.name + ' photo';
+      return `<button type="button" class="${shapeClass}" data-index="${i}" aria-label="View photo: ${escapeHtml(caption)}"><img src="${escapeHtml(im.image_url)}" alt="${escapeHtml(caption)}" loading="lazy"></button>`;
     }).join('');
-    grid.querySelectorAll('a').forEach(a => {
-      a.addEventListener('click', e => {
-        e.preventDefault();
-        openLightbox(data.images, Number(a.dataset.index));
-      });
+    grid.querySelectorAll('button[data-index]').forEach(btn => {
+      btn.addEventListener('click', () => openLightbox(data.images, Number(btn.dataset.index)));
     });
   }).catch(() => {
     grid.innerHTML = '';
@@ -1518,210 +1561,15 @@ function openLightbox(images, startIndex){
 }
 
 /* ============================================================
-   DYNAMIC TOUR CARDS — fills any element with id="tour-grid"
-   (used on index.html's featured section and tours.html's full
-   catalogue) by fetching straight from /api/tours. Falls back to
-   whatever static markup was already in the container if the very
-   first request can't reach the API, so the page still works offline.
+   DYNAMIC TOUR CARDS — removed.
 
-   On tours.html, the filters-panel sidebar (Duration/Difficulty/Riding
-   style/Destination/Season/Group type/Budget/Max altitude) is read into
-   real /api/tours query params and re-fetched on every change — filtering
-   happens in the database, not in this file — and the current selection
-   is mirrored into the URL so it's shareable/bookmarkable.
+   This filled #tour-grid on the old tours.html catalogue and the old
+   homepage. Neither exists any more: the listing is adventures.html and
+   every card on the site is built by advCard() in adventures.js from
+   /api/adventures. Nothing on any page carried id="tour-grid", so this
+   block returned on its first line everywhere it loaded. Removed, together
+   with tours.html itself, rather than shipped as dead weight on every page.
    ============================================================ */
-(function(){
-  const grid = document.getElementById('tour-grid');
-  if(!grid) return;
-
-  const SLUG_ANCHOR = {
-    'upper-mustang':'tour-mustang', 'annapurna-epic':'tour-annapurna', 'kathmandu-valley-explorer':'tour-kathmandu',
-    'langtang-forest-flow':'tour-langtang', 'manaslu-wilderness-traverse':'tour-manaslu', 'pokhara-lakeside-flow':'tour-pokhara',
-  };
-  const LEVEL_WORD = { 1:'Explorer', 2:'Trail Rider', 3:'Mountain Rider', 4:'Enduro', 5:'Expedition' };
-
-  /** Availability pip/text for a tour card. Distinguishes three states the
-   *  backend tells apart: a real upcoming departure (show its seats/status),
-   *  a tour that HAS departures but none upcoming (all past/cancelled), and
-   *  a tour that has never had a departure scheduled at all. */
-  function availability(t){
-    const dep = t.next_departure;
-    if(dep){
-      if(dep.status === 'full') return { pip:'pip-red', text:'Fully booked' };
-      if(dep.status === 'request_only') return { pip:'pip-amber', text:'Request-only' };
-      const left = dep.capacity - dep.seats_booked;
-      return { pip: left <= 3 ? 'pip-amber' : 'pip-green', text: left + (left === 1 ? ' space left' : ' spaces left') };
-    }
-    return t.has_departures
-      ? { pip:'pip-amber', text:'No upcoming dates' }
-      : { pip:'pip-amber', text:'Dates on request' };
-  }
-
-  function nextDepartureLabel(t){
-    if(!t.next_departure) return null;
-    return new Date(t.next_departure.start_date).toLocaleDateString(undefined, { day:'numeric', month:'short', year:'numeric' });
-  }
-
-  function cardHtml(t){
-    const avail = availability(t);
-    const id = SLUG_ANCHOR[t.slug] || ('tour-' + t.slug);
-    const img = t.image_url || 'https://images.unsplash.com/photo-1652361561822-b2aa3f30416a?auto=format&fit=crop&w=1200&q=80';
-    const detailHref = 'tour-detail.html?slug=' + encodeURIComponent(t.slug);
-    const nextDep = nextDepartureLabel(t);
-    const metaBits = [`${t.duration_days} days`, escapeHtml(t.riding_style)];
-    if(t.riding_hours_summary) metaBits.push(escapeHtml(t.riding_hours_summary));
-    if(t.best_season) metaBits.push(escapeHtml(t.best_season));
-    return `<article class="tour-card" id="${escapeHtml(id)}">
-      <div class="tour-media"><img src="${escapeHtml(img)}" alt="${escapeHtml(t.name)}">
-        <span class="tour-tag">Level ${t.difficulty_level} · ${escapeHtml(LEVEL_WORD[t.difficulty_level] || '')}</span>
-        <span class="avail"><span class="pip ${avail.pip}"></span>${escapeHtml(avail.text)}</span>
-        <span class="tour-loc">${escapeHtml(t.region)}</span></div>
-      <div class="tour-body"><h3>${escapeHtml(t.name)}</h3>
-        <div class="tour-meta"><span>${metaBits.join('</span><span>')}</span></div>
-        <div class="tour-stats">
-          <div><b>${t.distance_km}km</b><span>riding</span></div>
-          <div><b>${t.elevation_gain_m.toLocaleString()}m</b><span>climbing</span></div>
-          <div><b>${t.max_altitude_m.toLocaleString()}m</b><span>max alt.</span></div>
-        </div>
-        <div class="tour-foot">
-          <div class="tour-price">From <b>€${(t.price_from_cents/100).toLocaleString()}</b></div>
-          <a href="${detailHref}" class="tour-link">View adventure</a>
-        </div>
-      </div>
-      ${nextDep ? `<p class="tour-next-dep">Next departure: ${escapeHtml(nextDep)}</p>` : ''}
-    </article>`;
-  }
-
-  function renderGrid(tours){
-    grid.innerHTML = tours.map(cardHtml).join('') || '<p class="tour-grid-status">No tours match these filters — try widening your search.</p>';
-    const countEl = document.getElementById('tour-count');
-    if(countEl) countEl.textContent = tours.length + (tours.length === 1 ? ' tour' : ' tours');
-    window.initTourTilt();
-  }
-
-  /* tours.html only: reads the filters-panel sidebar into real /api/tours
-     query params (server-side filtering), keeps the URL in sync with the
-     current selection, and re-fetches on every change. */
-  function setupFilters(){
-    const panel = document.getElementById('filters-panel');
-    if(!panel) return null;
-
-    const checkboxes = [...panel.querySelectorAll('input[type=checkbox][data-filter]')];
-    const budgetMin = document.getElementById('f-budget-min');
-    const budgetMax = document.getElementById('f-budget-max');
-    const maxAltitude = document.getElementById('f-max-altitude');
-
-    function applyFromQuery(){
-      const params = new URLSearchParams(location.search);
-      checkboxes.forEach(cb => {
-        const qVal = params.get(cb.dataset.filter);
-        if(!qVal) return;
-        const selected = qVal.split(',').map(v => v.trim().toLowerCase());
-        const ownTokens = cb.value.split(',').map(v => v.trim().toLowerCase());
-        if(ownTokens.some(t => selected.includes(t))) cb.checked = true;
-      });
-      if(budgetMin && params.get('minBudget')) budgetMin.value = params.get('minBudget');
-      if(budgetMax && params.get('maxBudget')) budgetMax.value = params.get('maxBudget');
-      if(maxAltitude && params.get('maxAltitude')) maxAltitude.value = params.get('maxAltitude');
-    }
-
-    function buildQueryParams(){
-      const params = new URLSearchParams();
-      const groups = {};
-      checkboxes.forEach(cb => {
-        if(!cb.checked) return;
-        (groups[cb.dataset.filter] ||= []).push(cb.value);
-      });
-      Object.entries(groups).forEach(([key, values]) => { if(values.length) params.set(key, values.join(',')); });
-      if(budgetMin && budgetMin.value) params.set('minBudget', budgetMin.value);
-      if(budgetMax && budgetMax.value) params.set('maxBudget', budgetMax.value);
-      if(maxAltitude && maxAltitude.value) params.set('maxAltitude', maxAltitude.value);
-      return params;
-    }
-
-    let requestSeq = 0;
-    let loadedOnce = false;
-    function refresh(){
-      const params = buildQueryParams();
-      const qs = params.toString();
-      history.replaceState(null, '', location.pathname + (qs ? '?' + qs : ''));
-
-      const countEl = document.getElementById('tour-count');
-      // The very first load keeps whatever static fallback markup is already
-      // in the grid until we know the API answered — later refreshes (the
-      // rider actively changing filters) show a real loading state.
-      if(loadedOnce){
-        grid.innerHTML = '<p class="tour-grid-status">Loading tours…</p>';
-        if(countEl) countEl.textContent = 'Loading…';
-      }
-
-      const seq = ++requestSeq;
-      apiGet('/api/tours' + (qs ? '?' + qs : '')).then(data => {
-        if(seq !== requestSeq) return; // a newer filter change already superseded this request
-        loadedOnce = true;
-        renderGrid(data.tours);
-      }).catch(err => {
-        if(seq !== requestSeq) return;
-        if(!loadedOnce){
-          const note = document.createElement('p');
-          note.className = 'tour-grid-status';
-          note.textContent = 'Backend not reachable at ' + API_BASE + ' — showing offline preview cards. (' + err.message + ')';
-          grid.parentElement.insertBefore(note, grid);
-          return;
-        }
-        grid.innerHTML = `<p class="tour-grid-status tour-grid-error">Couldn't load tours (${escapeHtml(err.message)}).<button type="button" id="tour-retry">Retry</button></p>`;
-        if(countEl) countEl.textContent = 'Error';
-        const retry = document.getElementById('tour-retry');
-        if(retry) retry.addEventListener('click', refresh);
-      });
-    }
-
-    applyFromQuery();
-    checkboxes.forEach(cb => cb.addEventListener('change', refresh));
-    if(maxAltitude) maxAltitude.addEventListener('change', refresh);
-    // Number inputs debounce so refresh doesn't fire on every keystroke.
-    let debounceTimer;
-    [budgetMin, budgetMax].forEach(input => {
-      if(!input) return;
-      input.addEventListener('input', () => { clearTimeout(debounceTimer); debounceTimer = setTimeout(refresh, 450); });
-    });
-    const clearBtn = document.getElementById('filters-clear');
-    if(clearBtn) clearBtn.addEventListener('click', () => {
-      checkboxes.forEach(cb => cb.checked = false);
-      if(budgetMin) budgetMin.value = '';
-      if(budgetMax) budgetMax.value = '';
-      if(maxAltitude) maxAltitude.value = '';
-      refresh();
-    });
-
-    // Mobile-only collapse toggle for the whole filters panel.
-    const toggleBtn = document.getElementById('filters-toggle');
-    if(toggleBtn){
-      toggleBtn.addEventListener('click', () => {
-        const collapsed = panel.classList.toggle('filters-collapsed');
-        toggleBtn.setAttribute('aria-expanded', String(!collapsed));
-        toggleBtn.textContent = collapsed ? 'Show filters' : 'Hide filters';
-      });
-    }
-
-    return refresh;
-  }
-
-  const runFilteredLoad = setupFilters();
-  if(runFilteredLoad){
-    runFilteredLoad();
-  } else {
-    // index.html's featured strip: no filters, just show whatever the API returns.
-    apiGet('/api/tours').then(data => {
-      renderGrid(data.tours);
-    }).catch(err => {
-      const note = document.createElement('p');
-      note.style.cssText = 'color:var(--paper-dim); font-family:var(--f-mono); font-size:12px; padding:16px 0;';
-      note.textContent = 'Backend not reachable at ' + API_BASE + ' — showing offline preview cards. (' + err.message + ')';
-      grid.parentElement.insertBefore(note, grid);
-    });
-  }
-})();
 
 /* ============================================================
    HOMEPAGE "RIDER STORIES" — fills #home-review-strip from /api/reviews,
@@ -1789,7 +1637,7 @@ function openLightbox(images, startIndex){
   apiGet('/api/departures?upcoming=1&limit=6').then(data => {
     tbody.innerHTML = data.departures.length
       ? data.departures.map(depRowHtml).join('')
-      : `<tr><td colspan="5" style="padding:20px; color:var(--paper-dim);">No upcoming departures scheduled right now — <a href="build-adventure.html">build a custom trip</a> instead.</td></tr>`;
+      : `<tr><td colspan="5" style="padding:20px; color:var(--paper-dim);">No upcoming departures scheduled right now — <a href="private-trips.html">build a custom trip</a> instead.</td></tr>`;
   }).catch(err => {
     tbody.innerHTML = `<tr><td colspan="5" style="padding:20px; color:var(--paper-dim);">Couldn't load live departures (${escapeHtml(err.message)}) — try the <a href="calendar.html">full calendar</a> instead.</td></tr>`;
   });
@@ -1809,9 +1657,14 @@ function openLightbox(images, startIndex){
     try {
       await apiPost('/api/newsletter', { email });
       form.reset();
-      note.textContent = 'You\'re on the list — we\'ll email you when new departures open.';
+      // No outbound mail is configured on this deployment (see
+      // backend/lib/email.js), so the old message — "we'll email you when
+      // new departures open" — promised something nothing sends. The row
+      // IS really stored; that is what this says instead.
+      note.textContent = 'Saved. Your address is on file — no email has been sent, '
+        + 'because outbound mail is not connected on this deployment yet.';
       note.style.color = '#7FBF6B';
-      showToast('Subscribed! We\'ll email you when new departures open.', 'success');
+      showToast('Saved — your address is on file.', 'success');
     } catch(err) {
       note.textContent = 'Could not subscribe: ' + err.message;
       note.style.color = '#D9534F';
@@ -1823,26 +1676,18 @@ function openLightbox(images, startIndex){
 })();
 
 /* ============================================================
-   HOMEPAGE "FIND YOUR RIDE" FINDER — redirects to tours.html with
-   query params the filters-panel above reads back out (applyFromQuery).
+   HOMEPAGE FINDER — removed.
+
+   This used to read three selects (#f-duration, #f-diff, #f-style) off the
+   homepage and redirect to the old tours listing with riding-style params. It has been
+   replaced by the brief's four-question Adventure Finder, which is built
+   from /api/finder in adventures.js and posts to finder.html.
+
+   Deleted rather than left in place because the old handler attached a
+   submit listener to `.finder` and then read element IDs that no longer
+   exist, so every submit on the new homepage finder would have thrown on
+   `document.getElementById('f-duration').value`.
    ============================================================ */
-(function(){
-  const form = document.querySelector('.finder');
-  if(!form) return;
-  const DIFF_TO_LEVELS = { Beginner:'1', Intermediate:'2,3', Advanced:'4', Expert:'5' };
-  const DUR_TO_RANGE = { '1–3 days':'1-3', '4–7 days':'4-7', '8–14 days':'8-14', '15+ days':'15-999' };
-  form.addEventListener('submit', e => {
-    e.preventDefault();
-    const duration = document.getElementById('f-duration').value;
-    const difficulty = document.getElementById('f-diff').value;
-    const style = document.getElementById('f-style').value;
-    const params = new URLSearchParams();
-    if(DUR_TO_RANGE[duration]) params.set('duration', DUR_TO_RANGE[duration]);
-    if(DIFF_TO_LEVELS[difficulty]) params.set('difficulty', DIFF_TO_LEVELS[difficulty]);
-    if(style && !style.startsWith('Any')) params.set('style', style);
-    location.href = 'tours.html' + (params.toString() ? '?' + params.toString() : '');
-  });
-})();
 
 /* ============================================================
    DYNAMIC GUIDES + GALLERY — same pattern as tour cards: fetch
@@ -1871,9 +1716,13 @@ function openLightbox(images, startIndex){
   if(!grid) return;
   apiGet('/api/gallery?category=gallery').then(data => {
     if(!data.images.length) return; // keep static fallback rather than show an empty grid
+    // No lightbox is wired to the homepage grid, so these were anchors to
+    // nowhere wrapped around decorative photographs. A figure is what they
+    // actually are; the caption is now visible to assistive technology
+    // instead of being thrown away into an alt attribute on a dead link.
     grid.innerHTML = data.images.map((im, i) => {
       const shapeClass = i === 0 ? 'g-tall' : i === 2 ? 'g-wide' : i === 5 ? 'g-tall' : i === 6 ? 'g-wide' : '';
-      return `<a href="#" class="${shapeClass}"><img src="${escapeHtml(im.image_url)}" alt="${escapeHtml(im.caption || '')}"></a>`;
+      return `<figure class="${shapeClass}"><img src="${escapeHtml(im.image_url)}" alt="${escapeHtml(im.caption || '')}" loading="lazy" decoding="async"></figure>`;
     }).join('');
   }).catch(() => { /* keep static fallback images already in the HTML */ });
 })();
@@ -1943,179 +1792,14 @@ function openLightbox(images, startIndex){
 })();
 
 /* ============================================================
-   BUILD YOUR ADVENTURE — multi-step wizard
+   BUILD YOUR ADVENTURE wizard — removed.
+
+   It lived on build-adventure.html, which was superseded by
+   private-trips.html (brief section 14). Private Trips now takes
+   ?tour=<slug> and sends tourId, which is the one thing the wizard did
+   that nothing else did — so a request made from a full or request-only
+   departure still arrives in the CRM "based on" its tour.
    ============================================================ */
-(function(){
-  const frame = document.querySelector('.wizard-frame');
-  if(!frame) return;
-
-  const steps = [...document.querySelectorAll('.wizard-step')];
-  const pips = [...document.querySelectorAll('.step-pip')];
-  let current = 0;
-  const state = { destination:null, tourId:null, preferredDate:'', duration:null, style:null, experience:null, groupsize:'', budget:'', preferences:[], name:'', email:'' };
-
-  /* ---------- Question 1: base tour (real catalogue only) + preferred date ----------
-     The destination is always picked from GET /api/tours, never typed free
-     text, so a proposal always starts from an itinerary that actually
-     exists — see routes/customRequests.js's tourId validation. */
-  const tourSelect = document.getElementById('w-tour');
-  const tourPreview = document.getElementById('w-tour-preview');
-  let toursForWizard = [];
-  if(tourSelect){
-    apiGet('/api/tours').then(data => {
-      toursForWizard = data.tours;
-      tourSelect.innerHTML = '<option value="">Not sure yet — recommend something</option>' +
-        toursForWizard.map(t => `<option value="${t.id}">${escapeHtml(t.name)}${t.region ? ' — ' + escapeHtml(t.region) : ''}</option>`).join('');
-    }).catch(() => {
-      tourSelect.innerHTML = '<option value="">Not sure yet — recommend something</option>';
-    });
-    tourSelect.addEventListener('change', () => {
-      const tour = toursForWizard.find(t => t.id === Number(tourSelect.value));
-      state.tourId = tour ? tour.id : null;
-      state.destination = tour ? tour.name : 'Not sure yet';
-      if(tour){
-        const money = c => '€' + (c/100).toLocaleString(undefined, { minimumFractionDigits:0 });
-        tourPreview.innerHTML = `
-          <div class="tour-preview-head">
-            ${tour.image_url ? `<img src="${escapeHtml(tour.image_url)}" alt="">` : ''}
-            <div>
-              <h5>${escapeHtml(tour.name)}</h5>
-              <div class="tour-preview-meta">
-                <span>${tour.duration_days} days</span><span>Level ${tour.difficulty_level}/5</span>
-                <span>${tour.distance_km} km</span><span>From ${money(tour.price_from_cents)}</span>
-              </div>
-            </div>
-          </div>
-          <p>${escapeHtml(tour.summary || '')}</p>
-          <a href="tour-detail.html?slug=${encodeURIComponent(tour.slug)}" target="_blank" rel="noopener">View full tour details &rarr;</a>`;
-        tourPreview.classList.remove('hidden');
-      } else {
-        tourPreview.classList.add('hidden');
-        tourPreview.innerHTML = '';
-      }
-      updateSummary();
-    });
-  }
-
-  function showStep(i){
-    steps.forEach((s,si) => s.classList.toggle('active', si===i));
-    pips.forEach((p,pi) => {
-      p.classList.toggle('done', pi < i);
-      p.classList.toggle('active', pi === i);
-    });
-    current = i;
-    const top = frame.getBoundingClientRect().top + window.scrollY - 130;
-    window.scrollTo({ top, behavior:'smooth' });
-  }
-
-  document.querySelectorAll('.opt-pill').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const field = btn.dataset.field;
-      const value = btn.dataset.value;
-      const multi = btn.dataset.multi === 'true';
-      if(multi){
-        btn.classList.toggle('selected');
-        const idx = state.preferences.indexOf(value);
-        if(btn.classList.contains('selected') && idx === -1) state.preferences.push(value);
-        if(!btn.classList.contains('selected') && idx > -1) state.preferences.splice(idx,1);
-      } else {
-        document.querySelectorAll('.opt-pill[data-field="'+field+'"]').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-        state[field] = value;
-      }
-      updateSummary();
-    });
-  });
-
-  const bind = (name, key) => document.querySelectorAll('[name="'+name+'"]').forEach(el =>
-    el.addEventListener('input', e => { state[key] = e.target.value; updateSummary(); }));
-  bind('groupsize','groupsize'); bind('budget','budget'); bind('name','name'); bind('email','email'); bind('preferredDate','preferredDate');
-
-  // Prefill (and lock) name/email from the signed-in account, if any — a
-  // signed-in rider's request gets linked to their account automatically on
-  // submit (see apiPost's Authorization header), so these should match.
-  if(Auth.isSignedIn()){
-    state.name = Auth.name(); state.email = Auth.email();
-    document.querySelectorAll('[name="name"]').forEach(el => { el.value = Auth.name(); });
-    document.querySelectorAll('[name="email"]').forEach(el => { el.value = Auth.email(); });
-  }
-
-  function updateSummary(){
-    const map = {
-      destination: 'ws-destination', preferredDate: 'ws-preferreddate', duration: 'ws-duration', style: 'ws-style',
-      experience: 'ws-experience', groupsize: 'ws-groupsize', budget: 'ws-budget',
-    };
-    Object.keys(map).forEach(k => {
-      const el = document.getElementById(map[k]);
-      if(!el) return;
-      const val = state[k];
-      el.textContent = val ? val : 'Not set yet';
-      el.closest('.ws-row').classList.toggle('empty', !val);
-    });
-    const prefEl = document.getElementById('ws-preferences');
-    if(prefEl){
-      prefEl.textContent = state.preferences.length ? state.preferences.join(', ') : 'Not set yet';
-      prefEl.closest('.ws-row').classList.toggle('empty', !state.preferences.length);
-    }
-  }
-
-  document.querySelectorAll('[data-next]').forEach(btn => btn.addEventListener('click', () => {
-    if(current < steps.length - 1) showStep(current + 1);
-  }));
-  document.querySelectorAll('[data-back]').forEach(btn => btn.addEventListener('click', () => {
-    if(current > 0) showStep(current - 1);
-  }));
-
-  const submitBtn = document.getElementById('wizard-submit');
-  if(submitBtn){
-    // Signing in is required to submit (an account is what ties this lead —
-    // and any proposal a guide later builds on it — to a real rider). Gated
-    // at click time rather than on page load so the wizard itself stays
-    // freely browsable; Auth.requireSignIn pops the sign-in modal and resumes
-    // this exact function, with the already-filled-out `state`, the instant
-    // sign-in succeeds — nothing the visitor entered is lost.
-    async function doSubmit(){
-      const main = document.querySelector('.wizard-main');
-      const originalLabel = submitBtn.textContent;
-      submitBtn.textContent = 'Sending...';
-      submitBtn.disabled = true;
-      try {
-        await apiPost('/api/custom-requests', {
-          name: state.name, email: state.email, destination: state.destination, tourId: state.tourId,
-          preferredDate: state.preferredDate || null, duration: state.duration,
-          style: state.style, experience: state.experience, groupSize: state.groupsize, budget: state.budget,
-          preferences: state.preferences,
-        });
-        main.innerHTML =
-          '<div style="padding:40px 0;">' +
-            '<span class="q-num">Request received</span>' +
-            '<h2>We\'re on it' + (state.name ? ', ' + escapeHtml(state.name) : '') + '.</h2>' +
-            '<p style="color:var(--paper-dim); font-size:15px; max-width:52ch; margin-bottom:28px; line-height:1.7;">' +
-              'A guide will review your ' + escapeHtml(state.duration || 'trip') + ' ' + escapeHtml(state.style || '') + ' request for ' +
-              escapeHtml(state.destination || 'Nepal') + ' and reply with a proposed itinerary within two working days' +
-              (state.email ? ' at ' + escapeHtml(state.email) : '') + '. This has been saved to our team\u2019s request queue.' +
-            '</p>' +
-            '<a href="index.html" class="btn btn-solid">Back to the homepage</a>' +
-          '</div>';
-      } catch (err) {
-        submitBtn.textContent = originalLabel;
-        submitBtn.disabled = false;
-        let note = document.getElementById('wizard-error');
-        if(!note){
-          note = document.createElement('p');
-          note.id = 'wizard-error';
-          note.style.cssText = 'color:#E39B95; font-size:13px; margin-top:14px;';
-          submitBtn.closest('.wizard-nav').after(note);
-        }
-        note.textContent = 'Could not reach the booking system (' + err.message + '). Is the backend running at ' + API_BASE + '?';
-      }
-    }
-    submitBtn.addEventListener('click', () => Auth.requireSignIn(doSubmit));
-  }
-
-  showStep(0);
-  updateSummary();
-})();
 
 /* ============================================================
    RIDER DASHBOARD (dashboard.html) — profile editing, booking history
@@ -2172,7 +1856,7 @@ function openLightbox(images, startIndex){
     try {
       const data = await apiGet('/api/riders/me/bookings');
       lastBookings = data.bookings;
-      if(!data.bookings.length){ list.innerHTML = '<p class="dash-empty">No bookings yet — <a href="tours.html">browse tours</a>.</p>'; return; }
+      if(!data.bookings.length){ list.innerHTML = '<p class="dash-empty">No bookings yet — <a href="adventures.html">browse adventures</a>.</p>'; return; }
       list.innerHTML = data.bookings.map(b => {
         const st = BOOKING_STATUS[b.status] || { label:b.status, color:'#C9C4B2' };
         const pct = b.total_cents ? Math.min(100, Math.round((b.amount_paid_cents / b.total_cents) * 100)) : 0;
@@ -2220,15 +1904,15 @@ function openLightbox(images, startIndex){
         <p class="auth-sub">Rate the ride out of 5 on whatever mattered to you — leave any blank you'd rather skip.</p>
         <form id="review-form">
           <div class="dash-row">
-            <div class="dash-field"><label>Riding</label><select id="rv-riding"><option value="">&mdash;</option>${[5,4,3,2,1].map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
-            <div class="dash-field"><label>Guide</label><select id="rv-guide"><option value="">&mdash;</option>${[5,4,3,2,1].map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
+            <div class="dash-field"><label for="rv-riding">Riding</label><select id="rv-riding"><option value="">&mdash;</option>${[5,4,3,2,1].map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
+            <div class="dash-field"><label for="rv-guide">Guide</label><select id="rv-guide"><option value="">&mdash;</option>${[5,4,3,2,1].map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
           </div>
           <div class="dash-row">
-            <div class="dash-field"><label>Scenery</label><select id="rv-scenery"><option value="">&mdash;</option>${[5,4,3,2,1].map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
-            <div class="dash-field"><label>Organisation</label><select id="rv-org"><option value="">&mdash;</option>${[5,4,3,2,1].map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
+            <div class="dash-field"><label for="rv-scenery">Scenery</label><select id="rv-scenery"><option value="">&mdash;</option>${[5,4,3,2,1].map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
+            <div class="dash-field"><label for="rv-org">Organisation</label><select id="rv-org"><option value="">&mdash;</option>${[5,4,3,2,1].map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
           </div>
-          <div class="dash-field"><label>Accommodation</label><select id="rv-accom"><option value="">&mdash;</option>${[5,4,3,2,1].map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
-          <div class="dash-field"><label>Your review</label><textarea id="rv-quote" rows="4" placeholder="What stood out about this ride?" style="resize:vertical;"></textarea></div>
+          <div class="dash-field"><label for="rv-accom">Accommodation</label><select id="rv-accom"><option value="">&mdash;</option>${[5,4,3,2,1].map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div>
+          <div class="dash-field"><label for="rv-quote">Your review</label><textarea id="rv-quote" rows="4" placeholder="What stood out about this ride?" style="resize:vertical;"></textarea></div>
           <div class="filter-opt" style="margin-bottom:14px;"><label style="display:flex; align-items:center; gap:8px; cursor:pointer; color:var(--paper-dim); font-size:13px;"><input type="checkbox" id="rv-recommend" checked style="width:auto;"> I'd recommend this ride to another rider</label></div>
           <div class="auth-error" id="review-error"></div>
           <button type="submit" class="btn btn-solid btn-block">Submit review</button>
@@ -2274,10 +1958,10 @@ function openLightbox(images, startIndex){
   }
 
   /* ---------- pay for a booking (deposit or remaining balance) from the
-     dashboard — no real payment gateway is wired up in this demo, see the
-     note in the booking-confirmation response; any well-formed card is
-     accepted and the backend updates amount_paid_cents/status right away,
-     no admin step needed. --------- */
+     dashboard. No payment provider is connected (backend/lib/payments.js),
+     so unless ALLOW_SIMULATED_PAYMENTS is on, this modal shows how to pay
+     instead of card fields, and the backend would refuse a card anyway.
+     Payment is recorded by an admin when it actually arrives. --------- */
   function ensurePayModal(){
     if(document.getElementById('pay-overlay')) return;
     const overlay = document.createElement('div');
@@ -2289,14 +1973,14 @@ function openLightbox(images, startIndex){
         <h2 id="pay-modal-title">Pay for your booking</h2>
         <p class="auth-sub" id="pay-modal-sub">Demo checkout — no real card is charged.</p>
         <form id="pay-form">
-          <div class="dash-field"><label>Amount</label>
+          <div class="dash-field"><label for="pay-amount">Amount</label>
             <select id="pay-amount"></select>
           </div>
-          <div class="dash-field"><label>Name on card</label><input id="pay-name" required autocomplete="cc-name"></div>
-          <div class="dash-field"><label>Card number</label><input id="pay-number" required inputmode="numeric" autocomplete="cc-number" placeholder="4242 4242 4242 4242"></div>
+          <div class="dash-field"><label for="pay-name">Name on card</label><input id="pay-name" required autocomplete="cc-name"></div>
+          <div class="dash-field"><label for="pay-number">Card number</label><input id="pay-number" required inputmode="numeric" autocomplete="cc-number" placeholder="4242 4242 4242 4242"></div>
           <div class="dash-row">
-            <div class="dash-field"><label>Expiry (MM/YY)</label><input id="pay-expiry" required autocomplete="cc-exp" placeholder="12/28"></div>
-            <div class="dash-field"><label>CVV</label><input id="pay-cvv" required inputmode="numeric" autocomplete="cc-csc" placeholder="123"></div>
+            <div class="dash-field"><label for="pay-expiry">Expiry (MM/YY)</label><input id="pay-expiry" required autocomplete="cc-exp" placeholder="12/28"></div>
+            <div class="dash-field"><label for="pay-cvv">CVV</label><input id="pay-cvv" required inputmode="numeric" autocomplete="cc-csc" placeholder="123"></div>
           </div>
           <div class="auth-error" id="pay-error"></div>
           <button type="submit" class="btn btn-solid btn-block">Pay now</button>
@@ -2342,10 +2026,31 @@ function openLightbox(images, startIndex){
     options.push({ label: (options.length ? 'Full balance — ' : 'Full amount due — ') + money(balanceDue), value: balanceDue });
     amountSelect.innerHTML = options.map(o => `<option value="${o.value}">${o.label}</option>`).join('');
     document.getElementById('pay-modal-title').textContent = 'Pay for ' + booking.tour_name;
-    document.getElementById('pay-modal-sub').textContent = 'Demo checkout — no real card is charged. ' + money(booking.amount_paid_cents) + ' of ' + money(booking.total_cents) + ' paid so far.';
     document.getElementById('pay-form').reset();
     document.getElementById('pay-error').textContent = '';
-    document.getElementById('pay-overlay').classList.remove('hidden');
+    const paidLine = money(booking.amount_paid_cents) + ' of ' + money(booking.total_cents) + ' paid so far.';
+    const form = document.getElementById('pay-form');
+    let offPanel = document.getElementById('pay-off-panel');
+    // Decide BEFORE showing the modal, so card fields are never on screen
+    // for a payment that cannot happen.
+    getPaymentConfig().then(cfg => {
+      if(cfg.card_form){
+        form.classList.remove('hidden');
+        if(offPanel) offPanel.remove();
+        document.getElementById('pay-modal-sub').textContent = 'SIMULATED PAYMENT — no money moves. ' + paidLine;
+      } else {
+        form.classList.add('hidden');
+        if(!offPanel){
+          offPanel = document.createElement('div');
+          offPanel.id = 'pay-off-panel';
+          form.after(offPanel);
+        }
+        document.getElementById('pay-modal-sub').textContent = paidLine;
+        offPanel.innerHTML = paymentsOffPanel(cfg,
+          'Still to pay on this booking: ' + money(booking.total_cents - booking.amount_paid_cents) + '.');
+      }
+      document.getElementById('pay-overlay').classList.remove('hidden');
+    });
   };
   function closePayModal(){
     const overlay = document.getElementById('pay-overlay');
@@ -2464,7 +2169,7 @@ function openLightbox(images, startIndex){
     try {
       const data = await apiGet('/api/riders/me/requests');
       lastRequests = data.requests;
-      if(!data.requests.length){ list.innerHTML = '<p class="dash-empty">No custom requests yet — <a href="build-adventure.html">build one</a>.</p>'; return; }
+      if(!data.requests.length){ list.innerHTML = '<p class="dash-empty">No custom requests yet — <a href="private-trips.html">build one</a>.</p>'; return; }
       list.innerHTML = data.requests.map(r => {
         const st = REQUEST_STATUS[r.status] || { label:r.status, color:'#C9C4B2' };
         return `<div class="dash-item">
@@ -2515,7 +2220,22 @@ function openLightbox(images, startIndex){
   };
 
   window.dashCancelBooking = async function(id){
-    if(!confirm('Cancel this booking? This can\'t be undone.')) return;
+    // Spell out what cancelling is actually worth before they commit, rather
+    // than only revealing it in the toast afterwards. The figures come from
+    // the backend's own refund tiers (refund_preview_* on
+    // /api/riders/me/bookings), computed by the same function the real cancel
+    // uses, so the number shown here is the number they get.
+    const booking = lastBookings.find(b => b.id === id);
+    let question = 'Cancel this booking? This can\'t be undone.';
+    if(booking && booking.amount_paid_cents > 0){
+      question = booking.refund_preview_cents > 0
+        ? `Cancel this booking?\n\nYou've paid ${money(booking.amount_paid_cents)}. Cancelling now puts you in the `
+          + `${booking.refund_preview_percent}% refund tier, so you'd be refunded ${money(booking.refund_preview_cents)} `
+          + `once we've confirmed it.\n\nThis can't be undone.`
+        : `Cancel this booking?\n\nYou've paid ${money(booking.amount_paid_cents)}, and this is inside the no-refund `
+          + `window, so cancelling now refunds nothing. Talk to us first if something's come up.\n\nThis can't be undone.`;
+    }
+    if(!confirm(question)) return;
     try {
       const result = await apiPost('/api/bookings/' + id + '/cancel', {});
       showToast(
@@ -2817,15 +2537,19 @@ function openLightbox(images, startIndex){
       ${appliedPromo ? `<div class="review-block"><h4>Promo code</h4><p style="margin:0; color:#7FBF6B;">${escapeHtml(appliedPromo.code)} — −${money(p.discountCents)}</p></div>` : ''}
       <div class="review-block"><h4>Cancellation terms</h4><p style="font-size:14px; color:var(--paper-dim); margin:0;">
         If you cancel later, any refund on what you've already paid is calculated automatically from how far in advance you cancel.
-        <a href="cancellation-policy.html">Read the full policy</a>.</p></div>`;
+        <a href="booking-conditions.html#cancel-you">Read the full policy</a>.</p></div>`;
   }
 
   function showConfirmation(result){
     const b = result.booking;
+    // This used to say "Booking confirmed / You're booked!" directly above a
+    // sentence saying no payment had been taken. The booking is created as
+    // `pending` ("Awaiting payment") and is a held place until a deposit is
+    // recorded — Booking Conditions calls any claim otherwise a defect.
     document.querySelector('.checkout-main').innerHTML = `
       <div class="checkout-confirm">
-        <span class="q-num">Booking confirmed</span>
-        <h2>You're booked!</h2>
+        <span class="q-num">Place held</span>
+        <h2>Your place is held</h2>
         <div class="ref">${escapeHtml(b.booking_reference)}</div>
         <p style="color:var(--paper-dim); max-width:52ch; margin:0 auto 24px;">
           A deposit of ${money(result.payment.deposit_due_cents)} is due within 72 hours to hold your place — no payment has been taken yet.
@@ -2839,7 +2563,7 @@ function openLightbox(images, startIndex){
     const summary = document.querySelector('.checkout-summary');
     if(summary) summary.classList.add('hidden');
     document.getElementById('checkout-subtitle').textContent = 'Booking reference ' + b.booking_reference;
-    showToast('Booked! ' + b.booking_reference, 'success');
+    showToast('Place held — ' + b.booking_reference + '. Nothing has been charged.', 'success');
   }
 
   function wireNav(){
@@ -3196,7 +2920,7 @@ function openLightbox(images, startIndex){
       <div class="review-block"><h4>Add-ons</h4>${addonRows}</div>
       <div class="review-block"><h4>Cancellation terms</h4><p style="font-size:14px; color:var(--paper-dim); margin:0;">
         If you cancel later, any refund on what you've already paid is calculated automatically from how far in advance you cancel.
-        <a href="cancellation-policy.html">Read the full policy</a>.</p></div>`;
+        <a href="booking-conditions.html#cancel-you">Read the full policy</a>.</p></div>`;
   }
 
   function wireNav(){
@@ -3307,6 +3031,47 @@ function openLightbox(images, startIndex){
     setupRiderStepper();
     renderAddons();
     wireNav();
+
+    // No payment provider is connected, so the last step cannot take a
+    // deposit. Take the card fields out rather than leave a form the
+    // backend will refuse — and the custom trip is confirmed when an admin
+    // records the deposit, which also creates the booking.
+    const cfg = await getPaymentConfig();
+    if(!cfg.card_form){
+      ['cco-pay-name','cco-pay-number','cco-pay-expiry','cco-pay-cvv'].forEach(id => {
+        const el = document.getElementById(id);
+        const wrap = el && el.closest('.dash-field');
+        if(wrap) wrap.remove();
+      });
+      const row = document.querySelector('.checkout-step[data-step="4"] .dash-row');
+      if(row) row.remove();
+      const step = document.querySelector('.checkout-step[data-step="4"]');
+      if(step){
+        const h = step.querySelector('h2');
+        if(h) h.textContent = 'Review your trip';
+        const note = document.createElement('div');
+        note.innerHTML = paymentsOffPanel(cfg,
+          'Your proposal stays approved and nothing has been charged. When the deposit is recorded, the trip is confirmed and appears under Your bookings.');
+        const review = document.getElementById('cco-review');
+        if(review) review.after(note);
+      }
+      const btn = document.getElementById('cco-confirm-btn');
+      if(btn){
+        // Replace rather than disable: a disabled "Pay deposit" button still
+        // promises a payment that cannot happen.
+        const link = document.createElement('a');
+        link.href = cfg.contact_url || 'contact.html';
+        link.className = 'btn btn-solid';
+        link.textContent = 'Contact us to confirm';
+        btn.replaceWith(link);
+      }
+      const sum = document.querySelector('.checkout-summary p');
+      if(sum) sum.innerHTML = 'Nothing is charged on this page — online payment is not connected yet. '
+        + '<a href="booking-conditions.html#cancel-you">Cancellation terms</a>.';
+    } else {
+      const step = document.querySelector('.checkout-step[data-step="4"] h2');
+      if(step) step.textContent = 'Review & pay deposit (SIMULATED — no money moves)';
+    }
   }
 
   Auth.requireSignIn(init);

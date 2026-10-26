@@ -9,72 +9,24 @@
 </head>
 <body>
 
-<header class="site-header">
-  <a href="index.html" class="logo"><span class="mark">◆</span> HIGH ROUTE</a>
-  <nav>
-    <ul class="main-nav">
-      <li><a href="#">Explore</a>
-        <div class="nav-panel"><div class="nav-panel-inner">
-          <a href="tours.html">Tours</a>
-          <a href="index.html#map">Destinations</a>
-          <a href="tour-detail.html#route">Routes</a>
-          <a href="index.html#styles">Experiences</a>
-          <a href="tour-detail.html#levels">Difficulty levels</a>
-          <a href="index.html#departures">Seasons</a>
-        </div></div>
-      </li>
-      <li><a href="#">Plan</a>
-        <div class="nav-panel"><div class="nav-panel-inner">
-          <a href="calendar.html">Tour calendar</a>
-          <a href="build-adventure.html">Custom tour</a>
-          <a href="build-adventure.html">Build your trip</a>
-          <a href="#">Group tours</a>
-          <a href="#">Bike rental</a>
-          <a href="#">Accommodation</a>
-          <a href="#">Transport</a>
-          <a href="#">Travel information</a>
-        </div></div>
-      </li>
-      <li><a href="#">Ride</a>
-        <div class="nav-panel"><div class="nav-panel-inner">
-          <a href="index.html#journal">MTB stories</a>
-          <a href="index.html#journal">Rider journal</a>
-          <a href="index.html#gallery">Videos</a>
-          <a href="index.html#gallery">Photo gallery</a>
-          <a href="tour-detail.html#route">Route guides</a>
-          <a href="index.html#reviews">Rider community</a>
-        </div></div>
-      </li>
-      <li><a href="#">About</a>
-        <div class="nav-panel"><div class="nav-panel-inner">
-          <a href="index.html#why">Our story</a>
-          <a href="index.html#guides">Our guides</a>
-          <a href="index.html#why">Safety</a>
-          <a href="index.html#sustain">Sustainability</a>
-          <a href="index.html#why">Why Nepal</a>
-          <a href="index.html#reviews">Reviews</a>
-        </div></div>
-      </li>
-    </ul>
-  </nav>
-  <div class="header-actions">
-    <a href="#book" class="nav-cta">Book this adventure</a>
-    <button class="nav-toggle" aria-label="Menu">☰</button>
-  </div>
-</header>
+<div data-site-header></div>
+
+<!-- The main landmark. Without one, shell.js used to promote the first block
+     here and overwrite its id, which is what broke the dashboard. -->
+<main id="main">
 
 <div id="detail-signin-gate" class="dash-gate hidden">
-  <h1>Sign in to view this trip</h1>
+  <h2>Sign in to view this trip</h2>
   <p style="color:var(--paper-dim); margin:14px 0 24px; font-size:15px;">This is a custom trip proposal tied to your account — sign in to view its dates, pricing and guide.</p>
   <button class="btn btn-solid" id="detail-signin-btn">Sign in</button>
 </div>
 
 <!-- ============ HERO (filled from /api/tours/:slug by renderTourHeader() in main.js,
      or from a custom trip's proposal + its base tour when opened as ?request=<id>) ============ -->
-<section class="detail-hero">
+<section class="detail-hero" id="adv-detail">
   <img id="hero-img" src="https://images.unsplash.com/photo-1652361561822-b2aa3f30416a?auto=format&fit=crop&w=1920&q=80" alt="">
   <div class="detail-hero-content">
-    <div class="detail-crumb"><a href="index.html">Home</a> / <a href="tours.html">Tours</a> / <span id="crumb-name">…</span></div>
+    <div class="detail-crumb"><a href="index.html">Home</a> / <a href="adventures.html">Adventures</a> / <span id="crumb-name">…</span></div>
     <h1 id="hero-title">Loading tour…</h1>
   </div>
 </section>
@@ -88,6 +40,15 @@
     <div class="qb-item">Group size<b id="qb-groupsize">—</b></div>
     <div class="qb-item">Best season<b id="qb-season">—</b></div>
   </div>
+</div>
+
+<!-- ============ TRIP AT A GLANCE ============
+     Filled by adventures.js from /api/adventures/:slug. The rows are
+     conditional on what this adventure actually has, which is how one
+     template shows riding style on a bike trip and walking hours on a trek.
+     ============ -->
+<div class="wrap" style="margin-top:34px">
+  <div id="adv-glance"></div>
 </div>
 
 <section class="section">
@@ -113,7 +74,7 @@
 
         <div id="route-section">
           <h2 id="route" style="margin-top:64px;">Route, day by day</h2>
-          <p style="margin-bottom:8px;">Select a day to see the elevation profile, terrain and overnight stop. Hover the chart for altitude at any point.</p>
+          <p id="route-day-intro" style="margin-bottom:8px;">Select a day to see the elevation profile, terrain and overnight stop. Hover the chart for altitude at any point.</p>
           <p id="data-source-note" style="font-family:var(--f-mono); font-size:11px; color:var(--glacier); margin-bottom:28px;">Loading live route data…</p>
 
           <div class="day-tabs" id="day-tabs"></div>
@@ -136,16 +97,10 @@
               <div id="elev-tooltip" class="elev-tooltip"></div>
             </div>
           </div>
-
-          <div id="route-map-wrap" style="margin-top:28px;">
-            <h3 style="font-size:18px; color:var(--paper); text-transform:uppercase; margin-bottom:10px;">Route map</h3>
-            <p id="route-map-note" style="font-family:var(--f-mono); font-size:12px; color:var(--paper-dim); margin-bottom:14px;"></p>
-            <svg id="route-map" class="route-map hidden" viewBox="0 0 600 400" preserveAspectRatio="xMidYMid meet"></svg>
-          </div>
         </div>
         <div id="route-empty" class="hidden" style="margin-top:64px;">
           <h2 id="route-empty-heading">Route, day by day</h2>
-          <p style="color:var(--paper-dim);">This tour's day-by-day itinerary hasn't been published yet — check back soon, or ask about it via <a href="build-adventure.html">Build Your Adventure</a>.</p>
+          <p style="color:var(--paper-dim);">This tour's day-by-day itinerary hasn't been published yet — check back soon, or <a href="contact.html" data-ask-link>ask us about it</a>.</p>
         </div>
 
         <h2 style="margin-top:64px;">Your guides</h2>
@@ -170,28 +125,73 @@
 
         <h2 style="margin-top:64px;">Safety information</h2>
         <div id="tour-safety"><p style="color:var(--paper-dim); font-size:14px;">Loading…</p></div>
-        <p style="font-size:13px;"><a href="safety-policy.html">Read our full safety policy →</a></p>
+        <p style="font-size:13px;"><a href="safety.html">How we approach safety →</a></p>
 
         <h2 style="margin-top:64px;">Cancellation policy</h2>
         <div id="tour-cancellation"><p style="color:var(--paper-dim); font-size:14px;">Loading…</p></div>
-        <p style="font-size:13px;"><a href="cancellation-policy.html">Read our full cancellation policy →</a></p>
+        <p style="font-size:13px;"><a href="booking-conditions.html#cancel-you">Read the cancellation terms →</a></p>
 
         <h2 style="margin-top:64px;">Rider reviews</h2>
         <div id="tour-reviews" style="margin-top:20px;"><p style="color:var(--paper-dim); font-size:14px;">Loading reviews…</p></div>
+
+        <!-- ======== UNIVERSAL ADVENTURE SECTIONS ========
+             All of these are filled by adventures.js from
+             /api/adventures/:slug, and each REMOVES ITSELF if the adventure
+             has nothing to put in it — so a trip with no highlights entered
+             shows no highlights heading, rather than a heading above
+             nothing. The sections above this comment are main.js's, from
+             /api/tours/:slug, and are untouched.
+             ======== -->
+        <section id="adv-highlights" style="margin-top:64px"></section>
+        <section id="adv-suitability" style="margin-top:64px"></section>
+        <section id="adv-accommodation" style="margin-top:64px"></section>
+        <section id="adv-pricing-detail" style="margin-top:64px"></section>
+        <section id="adv-dates" style="margin-top:64px"></section>
+        <section id="adv-before-book" style="margin-top:64px"></section>
+        <section id="adv-faqs" style="margin-top:64px"></section>
+        <section id="adv-impact" style="margin-top:64px"></section>
+        <!-- The final conversion action (brief 8.14). Rendered by adventures.js
+             once the trip has loaded, so its buttons can point at this trip's
+             dates and carry its slug. -->
+        <section id="adv-final-cta" style="margin-top:64px"></section>
+
+        <!-- Two sections adventures.js can render are deliberately NOT
+             mounted here, because this page already has them:
+
+             #adv-itinerary  — an accordion of every day. The day tabs and
+               elevation panel above ARE this page's day-by-day: one day at
+               a time, with distance, ascent, descent, high point, hours,
+               terrain and the overnight stop, plus the elevation profile.
+               A second full day-by-day block was built on this page earlier
+               and taken off again at the owner's request for making the
+               layout unusual, so it is not coming back as a duplicate of a
+               section that already works.
+
+             #adv-reviews    — main.js already renders #tour-reviews from the
+               same reviews, with the five-dimension score breakdown this
+               site stores. One review list, not two.
+
+             Both renderers stay in adventures.js and mount automatically on
+             any page that does declare those ids — which is what makes them
+             reusable rather than dead. -->
       </div>
 
       <aside class="book-card" id="book">
         <div class="price" id="bc-price">— <span>/ person</span></div>
-        <div class="bc-row"><span>Departure date</span><select id="bc-date-select" disabled><option>Loading…</option></select></div>
+        <div class="bc-row"><label for="bc-date-select">Departure date</label><select id="bc-date-select" disabled><option>Loading…</option></select></div>
         <div class="bc-row"><span>Availability</span><b id="bc-avail" style="color:#7FBF6B;">—</b></div>
         <div class="bc-row"><span>Guide</span><b id="bc-guide">—</b></div>
         <div class="bc-row"><span>Duration</span><b id="bc-duration">—</b></div>
         <div class="bc-row"><span>Group size</span><b id="bc-groupsize">—</b></div>
         <div class="bc-row"><span>Difficulty</span><b id="bc-difficulty">—</b></div>
-        <a href="#" id="bc-book-btn" class="btn btn-solid btn-block" style="margin-top:24px;">Book this adventure</a>
-        <a href="build-adventure.html" class="btn btn-ghost btn-block" style="margin-top:12px;">Ask for a private departure</a>
-        <p style="font-size:12px; color:var(--paper-dim); margin-top:18px; line-height:1.6;">Deposit of 20% secures your place — shown live from the database. This demo checkout doesn't take real payment.
-          <a href="cancellation-policy.html">Cancellation policy</a>.</p>
+        <!-- A button until main.js knows which departure is selected. It was
+             `<a href="#">`, which offered a keyboard user a link to nowhere
+             on every tour page before the departures had loaded. -->
+        <button type="button" id="bc-book-btn" class="btn btn-solid btn-block" style="margin-top:24px;" disabled>Select a date to book</button>
+        <a href="private-trips.html" data-private-trip-link class="btn btn-ghost btn-block" style="margin-top:12px;">Ask for a private departure</a>
+        <a href="contact.html" data-ask-link class="btn btn-ghost btn-block" style="margin-top:8px;">Ask a question about this trip</a>
+        <p style="font-size:12px; color:var(--paper-dim); margin-top:18px; line-height:1.6;">A deposit secures your place; the amount shown at checkout is the one that applies. Nothing is charged online — online payment isn't connected yet.
+          <a href="booking-conditions.html#cancel-you">Cancellation terms</a>.</p>
       </aside>
 
     </div>
@@ -201,20 +201,17 @@
   <div class="wrap" style="text-align:center; padding:60px 0;">
     <h2>Couldn't load this tour</h2>
     <p id="tour-load-error-msg" style="color:var(--paper-dim); margin-bottom:24px;"></p>
-    <a href="tours.html" class="btn btn-solid">Back to all tours</a>
+    <a href="adventures.html" class="btn btn-solid">Back to all adventures</a>
   </div>
 </div>
 
-<footer>
-  <div class="wrap">
-    <div class="footer-bottom">
-      <span>© 2026 High Route MTB, Kathmandu</span>
-      <span><a href="index.html">Back to the homepage</a></span>
-    </div>
-  </div>
-</footer>
+</main>
 
+<div data-site-footer></div>
+
+<script src="shell.js"></script>
 <script src="config.js"></script>
 <script src="main.js"></script>
+<script src="adventures.js"></script>
 </body>
 </html>

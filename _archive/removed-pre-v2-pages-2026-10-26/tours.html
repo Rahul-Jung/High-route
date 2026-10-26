@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Adventures | High Route</title>
+<meta name="description" content="The High Route adventure catalogue has moved to the adventures page, which lists every activity rather than mountain biking alone.">
+<meta name="robots" content="noindex, follow">
+<link rel="canonical" href="adventures.html">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===========================================================================
+     This page was the mountain-bike tour catalogue. It is now a redirect to
+     adventures.html, and that is a deliberate deletion rather than a tidy-up.
+
+     Two reasons:
+
+     1. Two catalogues meant two sources of truth for "browse the trips", with
+        two filter vocabularies (this page filtered on riding style and
+        group-size buckets; the universal one filters on activity, trip format
+        and accommodation) and two card components to keep in step. The brief
+        rules that out in as many words, and the duplication was already
+        showing: this page's filters could not express "trekking" at all.
+
+     2. What was in the markup was worse than duplication. This page shipped
+        nine hand-written tour cards as a no-JavaScript fallback, carrying
+        prices (EUR 1,120, EUR 2,890, EUR 95), availability ("6 spaces",
+        "7 spots") and three whole trips - Rara Lake Wilderness among them -
+        that do not exist in the database. They were overwritten by the real
+        data a moment after load, so nobody saw them in a working browser,
+        which is exactly why they survived. With JavaScript off they were the
+        page: fabricated availability and invented prices, which is the single
+        thing the brief is most emphatic about.
+
+     The filter params this page accepted are translated below where the new
+     listing has an equivalent, so an old bookmark or an inbound link lands on
+     the same selection rather than on an unfiltered page.
+     =========================================================================== -->
+
+<div data-site-header></div>
+
+<main id="main">
+  <section class="section">
+    <div class="wrap">
+      <div class="empty-state">
+        <h1 style="font-family:var(--f-display);font-size:clamp(22px,4vw,30px);margin:0 0 10px">Taking you to the adventures page</h1>
+        <p>This catalogue now lists every activity rather than mountain biking alone. Your filters are coming with you.</p>
+        <p><a href="adventures.html" class="btn btn-solid" id="tours-go">Go to all adventures</a></p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div data-site-footer></div>
+
+<script src="shell.js"></script>
+<script src="config.js"></script>
+<script>
+/* Param translation, then redirect.
+ *
+ * replace() rather than assign() so the back button returns to wherever the
+ * visitor actually came from instead of bouncing them through here again.
+ * The link above is a real link and works without any of this. */
+(function () {
+  'use strict';
+  var from = new URLSearchParams(location.search);
+  var to = new URLSearchParams();
+
+  // difficulty=2,3 carries over unchanged - same meaning, same 1-5 scale.
+  if (from.get('difficulty')) to.set('difficulty', from.get('difficulty'));
+
+  // destination/region was a region LABEL ("Mustang"); the new listing's
+  // destination filter takes a slug, and its region filter still takes the
+  // label. Use the label filter, which is the one that cannot be wrong.
+  var dest = from.get('destination') || from.get('region');
+  if (dest) to.set('region', dest);
+
+  // duration was a lo-hi day range ("1-3", "8-14"); the new listing uses
+  // named bands. Map onto the band each range falls inside, taking the
+  // widest band the range touches so nothing is hidden by the translation.
+  var duration = from.get('duration');
+  if (duration) {
+    var bands = [];
+    duration.split(',').forEach(function (token) {
+      var m = /^(\d+)-(\d+)$/.exec(token.trim());
+      if (!m) return;
+      var lo = Number(m[1]), hi = Number(m[2]);
+      [['under-7', 1, 6], ['7-10', 7, 10], ['11-14', 11, 14], ['15-plus', 15, 365]].forEach(function (b) {
+        if (lo <= b[2] && hi >= b[1] && bands.indexOf(b[0]) === -1) bands.push(b[0]);
+      });
+    });
+    if (bands.length) to.set('duration', bands.join(','));
+  }
+
+  // minDuration/maxDuration pass straight through.
+  ['minDuration', 'maxDuration'].forEach(function (k) {
+    if (from.get(k)) to.set(k, from.get(k));
+  });
+
+  // Budget: the old page used minBudget/maxBudget (and maxPrice as an
+  // alias); the new one uses minPrice/maxPrice. Same units either way.
+  if (from.get('minBudget')) to.set('minPrice', from.get('minBudget'));
+  var maxBudget = from.get('maxBudget') || from.get('maxPrice');
+  if (maxBudget) to.set('maxPrice', maxBudget);
+
+  if (from.get('maxAltitude')) to.set('maxAltitude', from.get('maxAltitude'));
+
+  // style= and groupType= have no equivalent. style was riding_style, which
+  // is now an activity-specific field rather than a top-level filter, and
+  // groupType was a group-size bucket the new listing does not filter on.
+  // Dropped rather than approximated: a filter that silently means something
+  // else is worse than one that is not applied. Carried as a search term so
+  // the intent is not thrown away entirely.
+  if (from.get('style')) to.set('q', from.get('style'));
+
+  var target = 'adventures.html' + (to.toString() ? '?' + to.toString() : '');
+  var link = document.getElementById('tours-go');
+  if (link) link.href = target;
+  location.replace(target);
+})();
+</script>
+</body>
+</html>
